@@ -9,7 +9,6 @@ import dig from 'wsemi/src/dig.mjs'
 import haskey from 'wsemi/src/haskey.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import ispnum from 'wsemi/src/ispnum.mjs'
-import ott from './ott.mjs'
 
 
 /**
@@ -21,6 +20,7 @@ import ott from './ott.mjs'
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
  * @function
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {Number} uIni 輸入初始資金正數
  * @param {Array} ordersAll 輸入已結算訂單陣列
  * @param {String} timeOhlcStart 輸入回測起始秒時間字串
@@ -47,8 +47,8 @@ import ott from './ott.mjs'
  * ]
  *
  * let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
- * orders = calcOrdersRatio(orders)
- * let summary = calcOrdersSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+ * orders = calcOrdersRatio(ott, orders)
+ * let summary = calcOrdersSummary(ott, 1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
  * console.log(summary)
  * // => {
  * //   btDays: 0,
@@ -73,7 +73,7 @@ import ott from './ott.mjs'
  * // }
  *
  */
-let calcOrdersSummary = (uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
+let calcOrdersSummary = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
 
     if (!ispnum(uIni)) {
         throw new Error(`uIni[${uIni}] is not a positive number`)

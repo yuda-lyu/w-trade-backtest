@@ -501,7 +501,7 @@ calcOrders(arrOhlc, orders, { uIni: 1000 })
 
     
 
-    <h4 class="name" id="calcOrdersRatio"><span class="type-signature"></span>calcOrdersRatio<span class="signature">(orders)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+    <h4 class="name" id="calcOrdersRatio"><span class="type-signature"></span>calcOrdersRatio<span class="signature">(ott, orders)</span><span class="type-signature"> &rarr; {Array}</span></h4>
 
     
 
@@ -567,7 +567,7 @@ modeResult非有效字串(未平倉)之訂單不計算</p>
 
     <h5 class="h5-examples">Example</h5>
     
-    <pre class="prettyprint"><code>let orders = calcOrdersRatio([{
+    <pre class="prettyprint"><code>let orders = calcOrdersRatio(ott, [{
     modeResult: 'profit',
     timeStart: '2020-01-01T20:00:00',
     timeEnd: '2020-01-03T04:00:00',
@@ -607,6 +607,30 @@ console.log(orders[0])
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -681,7 +705,7 @@ console.log(orders[0])
 
     
 
-    <h4 class="name" id="calcOrdersSummary"><span class="type-signature"></span>calcOrdersSummary<span class="signature">(uIni, ordersAll, timeOhlcStart, timeOhlcEnd)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name" id="calcOrdersSummary"><span class="type-signature"></span>calcOrdersSummary<span class="signature">(ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd)</span><span class="type-signature"> &rarr; {Object}</span></h4>
 
     
 
@@ -767,8 +791,8 @@ let ordersSubmit = [
 ]
 
 let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
-orders = calcOrdersRatio(orders)
-let summary = calcOrdersSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+orders = calcOrdersRatio(ott, orders)
+let summary = calcOrdersSummary(ott, 1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
 console.log(summary)
 // => {
 //   btDays: 0,
@@ -816,6 +840,30 @@ console.log(summary)
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -962,7 +1010,7 @@ console.log(summary)
 
     
 
-    <h4 class="name" id="calcOrdersSummarySimple"><span class="type-signature"></span>calcOrdersSummarySimple<span class="signature">(uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name" id="calcOrdersSummarySimple"><span class="type-signature"></span>calcOrdersSummarySimple<span class="signature">(ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
 
     
 
@@ -1048,7 +1096,7 @@ let ordersSubmit = [
 ]
 
 let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
-let summary = calcOrdersSummarySimple(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+let summary = calcOrdersSummarySimple(ott, 1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
 console.log(summary)
 // => {
 //   numTrade: 4,
@@ -1092,6 +1140,42 @@ console.log(summary)
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -1396,7 +1480,7 @@ console.log(summary)
 
     
 
-    <h4 class="name" id="calcSummary"><span class="type-signature type-signature-async">(async) </span>calcSummary<span class="signature">(uIni, orders, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="calcSummary"><span class="type-signature type-signature-async">(async) </span>calcSummary<span class="signature">(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -1482,7 +1566,7 @@ let ordersSubmit = [
 ]
 
 let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
-let summary = await calcSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+let summary = await calcSummary(ott, 1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
 console.log(summary)
 // => {
 //   timeTest: '2026-08-01T22:27:10+08:00', //執行當下時間
@@ -1538,6 +1622,42 @@ console.log(summary)
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -1772,7 +1892,7 @@ console.log(summary)
 
     
 
-    <h4 class="name" id="closeAndSummaryOrders"><span class="type-signature type-signature-async">(async) </span>closeAndSummaryOrders<span class="signature">(fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="closeAndSummaryOrders"><span class="type-signature type-signature-async">(async) </span>closeAndSummaryOrders<span class="signature">(ott, fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -1868,7 +1988,7 @@ let ordersSubmit = [{
     uFee: 0.05,
 }]
 
-await closeAndSummaryOrders('./data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
+await closeAndSummaryOrders(ott, './data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
 console.log(fs.readdirSync('./result'))
 // => [ 'orders.json', 'report.html', 'summary.json' ]</code></pre>
 
@@ -1900,6 +2020,42 @@ console.log(fs.readdirSync('./result'))
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -2620,7 +2776,7 @@ genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './r
 
     
 
-    <h4 class="name" id="runStrategies"><span class="type-signature type-signature-async">(async) </span>runStrategies<span class="signature">(strategies, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="runStrategies"><span class="type-signature type-signature-async">(async) </span>runStrategies<span class="signature">(ott, strategies, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -2721,7 +2877,7 @@ let strategies = [
     { sid: 's2', mode: 'short', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '&lt;', th: 0.5, opr: 'and' }], settings },
 ]
 
-let rr = await runStrategies(strategies, funGetSeries)
+let rr = await runStrategies(ott, strategies, funGetSeries)
 console.log(rr.orders.map((o) => `${o.sid} ${o.timeStart} ${o.mode} ${o.modeResult || 'unsettled'}`))
 // => [
 //   's1 2020-01-01T00:00:00 long profit',
@@ -2762,6 +2918,42 @@ console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -3034,7 +3226,7 @@ console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
 
     
 
-    <h4 class="name" id="runStrategy"><span class="type-signature type-signature-async">(async) </span>runStrategy<span class="signature">(strategy, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="runStrategy"><span class="type-signature type-signature-async">(async) </span>runStrategy<span class="signature">(ott, strategy, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -3137,7 +3329,7 @@ let strategy = {
     settings: { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 },
 }
 
-let r = await runStrategy(strategy, funGetSeries)
+let r = await runStrategy(ott, strategy, funGetSeries)
 console.log(r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
 // => [
 //   '2020-01-01T00:00:00 long 100->105 profit',
@@ -3174,6 +3366,42 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
     
 
         <tr>
@@ -3461,7 +3689,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 22:46:02 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 23:14:52 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

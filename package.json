@@ -1,6 +1,6 @@
 {
   "name": "w-data-tdbacktest",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/w-data-tdbacktest.umd.js",
   "dependencies": {
     "dayjs": "^1.11.21",

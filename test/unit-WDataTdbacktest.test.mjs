@@ -21,14 +21,14 @@ import writeTxt from '../src/writeTxt.mjs'
 //    short以High>=priceStopLoss先判止損, Low<=priceTakeProfit判止盈; 僅檢查time>timeStart之K棒;
 //    long盈虧 = uTrade*(priceEnd/priceStart) - uTrade - 2*uFee; short盈虧 = (priceStart-priceEnd)*(uTrade/priceStart) - 2*uFee;
 //    並累計uCumuProfitOrLoss/uEquity(自uIni起), modeResult = 盈虧<0 ? 'loss' : 'profit', 未觸發者維持原單(未平倉)
-//  calcOrdersRatio(orders): 各已平倉單計算dayHold(以日期差+1)與rProfitOrLossDay = (1+rProfitOrLoss)^(1/dayHold)-1
-//  calcOrdersSummary(uIni, ordersAll, timeOhlcStart, timeOhlcEnd): 統計交易次數/勝率/最大回撤/最大持倉/夏普值/最終權益等
+//  calcOrdersRatio(ott, orders): 各已平倉單計算dayHold(以日期差+1)與rProfitOrLossDay = (1+rProfitOrLoss)^(1/dayHold)-1
+//  calcOrdersSummary(ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd): 統計交易次數/勝率/最大回撤/最大持倉/夏普值/最終權益等
 //  calcOrdersSummarySimple: 精簡版, 只算選股熱路徑欄位, 與完整版對應欄位一致
-//  calcSummary(uIni, orders, timeOhlcStart, timeOhlcEnd): 重算累積收益後執行ratio+summary, 另附timeTest/timeOhlcStart/timeOhlcEnd/uIni
-//  runStrategy(strategy, funGetSeries, opt): 依conds(sym/th/opr)於各時間點判斷觸發下單, 以settings計算止盈止損價格, 再走calcOrders+summary
-//  runStrategies(strategies, funGetSeries, opt): 逐策略執行(withSummary:false), 合併orders附sid, 以uIni總和跑calcSummary
+//  calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd): 重算累積收益後執行ratio+summary, 另附timeTest/timeOhlcStart/timeOhlcEnd/uIni
+//  runStrategy(ott, strategy, funGetSeries, opt): 依conds(sym/th/opr)於各時間點判斷觸發下單, 以settings計算止盈止損價格, 再走calcOrders+summary
+//  runStrategies(ott, strategies, funGetSeries, opt): 逐策略執行(withSummary:false), 合併orders附sid, 以uIni總和跑calcSummary
 //  genReport(r, fpOut): 讀取src內tmp.html與render*.js模板, 置換{name}/{orders}/{summary}後寫出html
-//  closeAndSummaryOrders(fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt):
+//  closeAndSummaryOrders(ott, fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt):
 //    以w-data-tdprovide讀取fdOhlc/fdParam數據, 結算ordersSubmit並輸出orders.json/summary.json/report.html至fdTest
 
 
@@ -145,7 +145,7 @@ describe('WDataTdbacktest', function() {
 
         it('同日結算單dayHold=1, rProfitOrLossDay=(1+rProfitOrLoss)^(1/1)-1', async function() {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
-            orders = calcOrdersRatio(orders)
+            orders = calcOrdersRatio(ott, orders)
             assert.strictEqual(orders[0].dayHold, 1)
             assert.ok(approx(orders[0].rProfitOrLossDay, 0.049), `rProfitOrLossDay=${orders[0].rProfitOrLossDay}`)
             assert.strictEqual(orders[1].dayHold, 1)
@@ -153,7 +153,7 @@ describe('WDataTdbacktest', function() {
         })
 
         it('跨日單dayHold以日期差+1, rProfitOrLossDay=(1.331)^(1/3)-1=0.1', function() {
-            let orders = calcOrdersRatio([{
+            let orders = calcOrdersRatio(ott, [{
                 modeResult: 'profit',
                 timeStart: '2020-01-01T20:00:00',
                 timeEnd: '2020-01-03T04:00:00',
@@ -164,7 +164,7 @@ describe('WDataTdbacktest', function() {
         })
 
         it('未平倉單不計算(無dayHold欄位)', function() {
-            let orders = calcOrdersRatio([{ modeResult: '', timeStart: t00 }])
+            let orders = calcOrdersRatio(ott, [{ modeResult: '', timeStart: t00 }])
             assert.strictEqual(orders[0].dayHold, undefined)
         })
 
@@ -174,8 +174,8 @@ describe('WDataTdbacktest', function() {
 
         let buildSummary = async () => {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
-            orders = calcOrdersRatio(orders)
-            return calcOrdersSummary(1000, orders, t00, t20)
+            orders = calcOrdersRatio(ott, orders)
+            return calcOrdersSummary(ott, 1000, orders, t00, t20)
         }
 
         it('交易次數與勝率: 4筆共3筆已平倉, 2勝1敗, rWin=66.67%', async function() {
@@ -224,7 +224,7 @@ describe('WDataTdbacktest', function() {
 
         it('uIni非正數時throw', function() {
             assert.throws(() => {
-                calcOrdersSummary(0, [], t00, t20)
+                calcOrdersSummary(ott, 0, [], t00, t20)
             }, { message: `uIni[0] is not a positive number` })
         })
 
@@ -234,7 +234,7 @@ describe('WDataTdbacktest', function() {
 
         it('對應欄位與完整版一致(numTrade/rWin/uTradeAllMax/uEquityFinal/btDays等)', async function() {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
-            let sm = calcOrdersSummarySimple(1000, orders, t00, t20)
+            let sm = calcOrdersSummarySimple(ott, 1000, orders, t00, t20)
             assert.strictEqual(sm.numTrade, 4)
             assert.strictEqual(sm.numTradeFin, 3)
             assert.strictEqual(sm.rWin, '66.67%')
@@ -254,7 +254,7 @@ describe('WDataTdbacktest', function() {
 
         it('重算累積收益後回傳完整摘要, 附timeTest/timeOhlcStart/timeOhlcEnd/uIni', async function() {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
-            let sm = await calcSummary(1000, orders, t00, t20)
+            let sm = await calcSummary(ott, 1000, orders, t00, t20)
             assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+08:00$/.test(sm.timeTest), `timeTest=${sm.timeTest}`)
             assert.strictEqual(sm.timeOhlcStart, t00)
             assert.strictEqual(sm.timeOhlcEnd, t20)
@@ -265,7 +265,7 @@ describe('WDataTdbacktest', function() {
         })
 
         it('timeOhlcStart非有效字串時reject', async function() {
-            await assert.rejects(calcSummary(1000, [], '', t20), { message: `invalid timeOhlcStart[]` })
+            await assert.rejects(calcSummary(ott, 1000, [], '', t20), { message: `invalid timeOhlcStart[]` })
         })
 
     })
@@ -306,7 +306,7 @@ describe('WDataTdbacktest', function() {
         }
 
         it('long策略: sig>0.5於t00與t08下單, t00單止盈於t04, t08單止損於t12', async function() {
-            let r = await runStrategy(buildStrategy('long', '>', 0.5), funGetSeries)
+            let r = await runStrategy(ott, buildStrategy('long', '>', 0.5), funGetSeries)
             assert.strictEqual(r.orders.length, 2)
             let o0 = r.orders[0]
             assert.strictEqual(o0.mode, 'long')
@@ -324,7 +324,7 @@ describe('WDataTdbacktest', function() {
         })
 
         it('summary附timeOhlcStart/timeOhlcEnd/uIni與統計欄位', async function() {
-            let r = await runStrategy(buildStrategy('long', '>', 0.5), funGetSeries)
+            let r = await runStrategy(ott, buildStrategy('long', '>', 0.5), funGetSeries)
             assert.strictEqual(r.summary.timeOhlcStart, t00)
             assert.strictEqual(r.summary.timeOhlcEnd, t20)
             assert.strictEqual(r.summary.uIni, 1000)
@@ -334,11 +334,11 @@ describe('WDataTdbacktest', function() {
         })
 
         it('mode非long或short時reject', async function() {
-            await assert.rejects(runStrategy({ mode: 'x' }, funGetSeries), { message: `invalid strategy.mode[x] not 'long' or 'short'` })
+            await assert.rejects(runStrategy(ott, { mode: 'x' }, funGetSeries), { message: `invalid strategy.mode[x] not 'long' or 'short'` })
         })
 
         it('withSummary:false時summary不含統計欄位', async function() {
-            let r = await runStrategy(buildStrategy('long', '>', 0.5), funGetSeries, { withSummary: false })
+            let r = await runStrategy(ott, buildStrategy('long', '>', 0.5), funGetSeries, { withSummary: false })
             assert.strictEqual(r.summary.numTrade, undefined)
             assert.strictEqual(r.summary.timeOhlcStart, t00)
         })
@@ -348,7 +348,7 @@ describe('WDataTdbacktest', function() {
                 { sid: 's1', ...buildStrategy('long', '>', 0.5) },
                 { sid: 's2', ...buildStrategy('short', '<', 0.5) },
             ]
-            let rr = await runStrategies(strategies, funGetSeries)
+            let rr = await runStrategies(ott, strategies, funGetSeries)
             //s1: t00/t08下單2筆; s2: sig<0.5於t04/t12/t16/t20下單4筆(t20單其後無K棒未平倉)
             assert.strictEqual(rr.orders.length, 6)
             assert.deepStrictEqual(rr.orders.map((o) => o.sid), ['s1', 's2', 's1', 's2', 's2', 's2']) //依timeStart排序
@@ -364,8 +364,8 @@ describe('WDataTdbacktest', function() {
 
         it('置換模板{name}/{orders}/{summary}後寫出html', async function() {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
-            orders = calcOrdersRatio(orders)
-            let summary = calcOrdersSummary(1000, orders, t00, t20)
+            orders = calcOrdersRatio(ott, orders)
+            let summary = calcOrdersSummary(ott, 1000, orders, t00, t20)
             let fpOut = path.resolve(fdTmp, 'report.html')
             genReport({ name: '單元測試報告', orders, summary }, fpOut)
             assert.ok(fs.existsSync(fpOut))
@@ -423,7 +423,7 @@ describe('WDataTdbacktest', function() {
             //ordersSubmit: A單(止盈於t04)
             let ordersSubmit = [buildOrder('long', t00, 100, 105, 97)]
 
-            await closeAndSummaryOrders(fdOhlc, fdParam, 1000, t00, t20, 'btc', ordersSubmit, fdTest)
+            await closeAndSummaryOrders(ott, fdOhlc, fdParam, 1000, t00, t20, 'btc', ordersSubmit, fdTest)
 
             //orders.json
             let orders = JSON.parse(fs.readFileSync(path.resolve(fdTest, 'orders.json'), 'utf8'))

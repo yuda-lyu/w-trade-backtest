@@ -11,7 +11,6 @@
 //   等效年化 = (uEquityFinal - uIni) / uTradeAllMax / 年數。)
 import dig from 'wsemi/src/dig.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
-import ott from './ott.mjs'
 
 /**
  * 統計全部訂單之精簡版回測摘要
@@ -22,6 +21,7 @@ import ott from './ott.mjs'
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
  * @function
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {Number} uIni 輸入初始資金正數
  * @param {Array} ordersAll 輸入已結算訂單陣列(經calcOrders設定timeStart、timeEnd、uTrade、uEquity、modeResult)
  * @param {String} timeOhlcStart 輸入回測起始秒時間字串
@@ -50,7 +50,7 @@ import ott from './ott.mjs'
  * ]
  *
  * let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
- * let summary = calcOrdersSummarySimple(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+ * let summary = calcOrdersSummarySimple(ott, 1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
  * console.log(summary)
  * // => {
  * //   numTrade: 4,
@@ -67,7 +67,7 @@ import ott from './ott.mjs'
  * // }
  *
  */
-let calcOrdersSummarySimple = (uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt = {}) => {
+let calcOrdersSummarySimple = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt = {}) => {
 
     //依 timeStart 排序(與原版一致; uEquity 是 calcOrdersFast 依此序的累計)。
     //  opt.skipSort: 呼叫端保證 ordersAll 已依 timeStart 升序時可跳過 slice+sort(熱路徑省數千筆排序); 預設 false 維持原行為。

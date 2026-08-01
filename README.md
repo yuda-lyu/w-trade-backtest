@@ -22,6 +22,7 @@ npm i w-data-tdbacktest
 > **Link:** [[dev source code](https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/g.mjs)]
 ```alias
 import WDataTdbacktest from 'w-data-tdbacktest'
+import ott from 'w-data-tdbacktest/src/ott.mjs' //時區時間函數由外部傳入, 可用src/ott.mjs或自行以dayjs包裝
 
 
 async function test() {
@@ -74,7 +75,7 @@ async function test() {
     }
 
     //runStrategy, 執行單一策略回測
-    let r = await WDataTdbacktest.runStrategy(strategy, funGetSeries)
+    let r = await WDataTdbacktest.runStrategy(ott, strategy, funGetSeries)
     console.log('runStrategy orders:', r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
     // => runStrategy orders: [
     //   '2020-01-01T00:00:00 long 100->105 profit',
@@ -98,7 +99,7 @@ async function test() {
         { sid: 's1', ...strategy },
         { sid: 's2', ...strategy, mode: 'short', conds: [{ key: 'sig', sym: '<', th: 0.5, opr: 'and' }] },
     ]
-    let rr = await WDataTdbacktest.runStrategies(strategies, funGetSeries)
+    let rr = await WDataTdbacktest.runStrategies(ott, strategies, funGetSeries)
     console.log('runStrategies orders:', rr.orders.map((o) => `${o.sid} ${o.timeStart} ${o.mode} ${o.modeResult || 'unsettled'}`))
     // => runStrategies orders: [
     //   's1 2020-01-01T00:00:00 long profit',
@@ -145,7 +146,7 @@ async function test() {
     // => calcOrders: [ '2020-01-01T00:00:00->2020-01-01T04:00:00 profit uProfitOrLoss=4.9' ]
 
     //calcSummary, 基於全部交易單重算累積收益並統計摘要
-    let summary = await WDataTdbacktest.calcSummary(1000, ordersClose, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+    let summary = await WDataTdbacktest.calcSummary(ott, 1000, ordersClose, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
     console.log('calcSummary:', {
         numTrade: summary.numTrade,
         rWin: summary.rWin,

@@ -10,7 +10,6 @@ import iseobj from 'wsemi/src/iseobj.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import isfun from 'wsemi/src/isfun.mjs'
 import pmSeries from 'wsemi/src/pmSeries.mjs'
-import { nowTpeStr } from './ott.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcOrdersRatio from './calcOrdersRatio.mjs'
 import calcOrdersSummary from './calcOrdersSummary.mjs'
@@ -26,6 +25,7 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
  * @function
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee})欄位
  * @param {Function} funGetSeries 輸入序列查詢async函數，依key回傳時間序列陣列
  * @param {Object} [opt={}] 輸入設定物件，預設{}
@@ -69,7 +69,7 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  *     settings: { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 },
  * }
  *
- * let r = await runStrategy(strategy, funGetSeries)
+ * let r = await runStrategy(ott, strategy, funGetSeries)
  * console.log(r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
  * // => [
  * //   '2020-01-01T00:00:00 long 100->105 profit',
@@ -79,7 +79,7 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  * // => 2 50.00% 1001.8
  *
  */
-let runStrategy = async(strategy, funGetSeries, opt = {}) => {
+let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
 
     //mode
     let mode = get(strategy, 'mode', '')
@@ -346,7 +346,7 @@ let runStrategy = async(strategy, funGetSeries, opt = {}) => {
 
     //summary
     let summary = {
-        timeTest: nowTpeStr(),
+        timeTest: ott().format('YYYY-MM-DDTHH:mm:ssZ'),
         timeOhlcStart,
         timeOhlcEnd,
         uIni: get(st, 'uIni', ''), //額外提取uIni儲存至summary, 其他參數須依照單策略或多策略自行再添加
@@ -356,10 +356,10 @@ let runStrategy = async(strategy, funGetSeries, opt = {}) => {
     if (withSummary) {
 
         //計算各單持倉天數, 等效日盈虧比例
-        orders = calcOrdersRatio(orders)
+        orders = calcOrdersRatio(ott, orders)
 
         //評分計算
-        let _summary = calcOrdersSummary(st.uIni, orders, timeOhlcStart, timeOhlcEnd)
+        let _summary = calcOrdersSummary(ott, st.uIni, orders, timeOhlcStart, timeOhlcEnd)
 
         //merge
         summary = {

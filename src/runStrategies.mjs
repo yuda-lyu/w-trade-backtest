@@ -6,7 +6,6 @@ import size from 'lodash-es/size.js'
 import sortBy from 'lodash-es/sortBy.js'
 import isestr from 'wsemi/src/isestr.mjs'
 import pmSeries from 'wsemi/src/pmSeries.mjs'
-import { nowTpeStr } from './ott.mjs'
 import runStrategy from './runStrategy.mjs'
 import calcSummary from './calcSummary.mjs'
 
@@ -20,6 +19,7 @@ import calcSummary from './calcSummary.mjs'
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
  * @function
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {Array} strategies 輸入策略陣列，各元素需含sid與runStrategy之strategy欄位
  * @param {Function} funGetSeries 輸入序列查詢async函數，依key回傳時間序列陣列
  * @param {Object} [opt={}] 輸入設定物件，預設{}
@@ -62,7 +62,7 @@ import calcSummary from './calcSummary.mjs'
  *     { sid: 's2', mode: 'short', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '<', th: 0.5, opr: 'and' }], settings },
  * ]
  *
- * let rr = await runStrategies(strategies, funGetSeries)
+ * let rr = await runStrategies(ott, strategies, funGetSeries)
  * console.log(rr.orders.map((o) => `${o.sid} ${o.timeStart} ${o.mode} ${o.modeResult || 'unsettled'}`))
  * // => [
  * //   's1 2020-01-01T00:00:00 long profit',
@@ -76,7 +76,7 @@ import calcSummary from './calcSummary.mjs'
  * // => 2000 6 40.00%
  *
  */
-let runStrategies = async (strategies, funGetSeries, opt = {}) => {
+let runStrategies = async (ott, strategies, funGetSeries, opt = {}) => {
 
     //withCalcOrderProfitOrLoss
     let withCalcOrderProfitOrLoss = get(opt, 'withCalcOrderProfitOrLoss', true)
@@ -94,7 +94,7 @@ let runStrategies = async (strategies, funGetSeries, opt = {}) => {
         try {
 
             //runStrategy
-            r = await runStrategy(strategy, funGetSeries, { withCalcOrderProfitOrLoss, withSummary: false })
+            r = await runStrategy(ott, strategy, funGetSeries, { withCalcOrderProfitOrLoss, withSummary: false })
 
             //uIni
             let uIni = get(strategy, 'settings.uIni', '')
@@ -149,14 +149,14 @@ let runStrategies = async (strategies, funGetSeries, opt = {}) => {
 
     //summary
     let summary = {
-        timeTest: nowTpeStr(),
+        timeTest: ott().format('YYYY-MM-DDTHH:mm:ssZ'),
         timeOhlcStart,
         timeOhlcEnd,
     }
 
     //withSummary
     if (withSummary) {
-        summary = await calcSummary(uIniAll, ordersAll, timeOhlcStart, timeOhlcEnd)
+        summary = await calcSummary(ott, uIniAll, ordersAll, timeOhlcStart, timeOhlcEnd)
     }
 
     //rr

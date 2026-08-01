@@ -7,7 +7,6 @@ import isarr from 'wsemi/src/isarr.mjs'
 import cint from 'wsemi/src/cint.mjs'
 import fsIsFolder from 'wsemi/src/fsIsFolder.mjs'
 import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
-import ott from './ott.mjs'
 import writeJson from './writeJson.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcSummary from './calcSummary.mjs'
@@ -23,6 +22,7 @@ import genReport from './genReport.mjs'
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
  * @function
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {String} fdOhlc 輸入儲存K線(ohlc)序列資料夾字串，各序列以`${key}.json`儲存
  * @param {String} fdParam 輸入儲存指標參數序列資料夾字串
  * @param {Number} uIni 輸入初始資金正數
@@ -67,12 +67,12 @@ import genReport from './genReport.mjs'
  *     uFee: 0.05,
  * }]
  *
- * await closeAndSummaryOrders('./data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
+ * await closeAndSummaryOrders(ott, './data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
  * console.log(fs.readdirSync('./result'))
  * // => [ 'orders.json', 'report.html', 'summary.json' ]
  *
  */
-let closeAndSummaryOrders = async (fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt = {}) => {
+let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt = {}) => {
 
     if (!fsIsFolder(fdOhlc)) {
         throw new Error(`fdOhlc[${fdOhlc}] is not a forder`)
@@ -130,7 +130,7 @@ let closeAndSummaryOrders = async (fdOhlc, fdParam, uIni, timeOhlcStart, timeOhl
     // console.log('ordersClose', ordersClose)
 
     //summary
-    let summary = await calcSummary(uIni, ordersClose, timeOhlcStart, timeOhlcEnd)
+    let summary = await calcSummary(ott, uIni, ordersClose, timeOhlcStart, timeOhlcEnd)
     console.log('summary', summary, size(ordersClose))
 
     //r

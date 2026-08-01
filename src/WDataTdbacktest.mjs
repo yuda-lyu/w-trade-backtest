@@ -1,4 +1,3 @@
-import ott from './ott.mjs'
 import runStrategy from './runStrategy.mjs'
 import runStrategies from './runStrategies.mjs'
 import calcOrders from './calcOrders.mjs'
@@ -11,7 +10,6 @@ import genReport from './genReport.mjs'
 
 
 let r = {
-    ott,
     runStrategy,
     runStrategies,
     calcOrders,
