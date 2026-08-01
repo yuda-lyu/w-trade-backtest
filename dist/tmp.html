@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>交易策略報告</title>
+
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <!-- Font Awesome -->
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        />
+        
+        <!-- lodash -->
+        <script src="https://cdn.jsdelivr.net/npm/lodash@4.18.1/lodash.min.js"></script>
+
+        <!-- wsemi -->
+        <script src="https://cdn.jsdelivr.net/npm/wsemi@1.8.67/dist/wsemi.umd.min.js"></script>
+        <script>
+            let w=wsemi
+        </script>
+
+        <!-- dayjs -->
+        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.19/dayjs.min.js"></script>
+        <script>
+            let ot=dayjs
+        </script>
+
+        <!-- ECharts -->
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+        <!-- vis-timeline standalone (CSS + JS) -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-timeline@latest/styles/vis-timeline-graph2d.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
+
+        <!-- render -->
+        <script>
+            {renderProfitPlot}
+        </script>
+        <script>
+            {renderOrdersTable}
+        </script>
+        <script>
+            {renderOrdersTimeline}
+        </script>
+        <script>
+            {renderSummary}
+        </script>
+
+        <style>
+
+            body {
+                font-family: "微軟正黑體";
+                background-color: #f8fafc; /* 使用更柔和的淺灰色背景 */
+            }
+
+            .stat-card {
+                background-color: white;
+                border-radius: 0.75rem; 
+                padding: 1.5rem;
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+                transition: all 0.3s ease-in-out;
+                border: 1px solid #e5e7eb;
+            }
+
+            .trade-table th {
+                background-color: #f1f5f9;
+                position: sticky;
+                top: 0;
+                font-weight: bold;
+                text-align: center;
+            }
+            .trade-table tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            .trade-table tr:hover {
+                background-color: #e2e8f0;
+            }
+
+            .trade-table td {
+                text-align: center;
+            }
+
+            .vis-group {
+
+            }
+
+            .vis-label {
+                font-size: 12px;
+                line-height: 28px;
+            }
+
+            .vis-item {
+
+            }
+
+            .vis-range {
+
+            }
+
+            .vis-item-content {
+                display: block !important;
+                font-size: 12px;
+                padding: 0px 2px !important;
+            }
+                        
+            .vis-item.bar-long {
+                background-color: #2eb65a;
+                border-color: #16A34A;
+                color: #fff;
+            }
+
+            .vis-item.bar-short {
+                background-color: #d85c5c;
+                border-color: #DC2626;
+                color: #fff;
+            }
+
+        </style>
+    </head>
+    <body>
+
+        <div class=" mx-auto p-4 sm:p-6 lg:p-8">
+
+            <!-- 標題 -->
+            <header class="mb-10">
+                <p class="text-md font-semibold text-gray-800">交易策略報告</p>
+                <h1 class="text-3xl text-gray-900 mt-2">
+                    {name}
+                </h1>
+            </header>
+
+            <!-- 摘要資訊區 -->
+            <section class="mb-8">
+
+                <h2 class="text-md font-semibold text-gray-800 mb-4">
+                    績效總覽
+                </h2>
+
+                <div 
+                    id="ref-summary"
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+
+            </section>
+
+            <!-- 累計收益圖 -->
+            <section class="mb-8">
+
+                <h2 class="text-md font-semibold text-gray-800 mb-4">
+                    收益曲線
+                </h2>
+
+                <div
+                    class="bg-white rounded-lg shadow-md border border-gray-200"
+                >
+                    <div
+                        id="ref-chart"
+                        style="width: 100%; height: 450px;"
+                    ></div>
+                </div>
+
+            </section>
+
+            <!-- 交易資訊列表 -->
+            <section class="mb-8">
+
+                <h2 class="text-md font-semibold text-gray-800 mb-4">
+                    交易紀錄
+                </h2>
+
+                <div
+                    class="bg-white rounded-lg shadow-md border border-gray-200 overflow-x-auto max-h-[600px]"
+                >
+                    <div
+                        id="ref-table"
+                    ></div>
+                </div>
+
+            </section>
+            
+            <!-- 交易甘特圖 -->
+            <section class="mb-8">
+
+                <h2 class="text-md font-semibold text-gray-800 mb-4">
+                    交易時序
+                </h2>
+
+                <div
+                    class="bg-white rounded-lg shadow-md border border-gray-200 overflow-x-auto max-h-[600px] overflow-hidden"
+                >
+                    <div
+                        id="ref-timeline"
+                    ></div>
+                </div>
+
+            </section>
+            
+        </div>
+
+        <script>
+
+            let orders = {orders}
+            let summary = {summary}
+
+            document.addEventListener("DOMContentLoaded", () => {
+
+                // Summary卡區
+                let eleSummary = document.getElementById("ref-summary")
+                renderSummary(eleSummary, summary)
+
+                // 累計盈虧圖
+                let eleChart = document.getElementById("ref-chart");
+                renderProfitPlot(eleChart, orders, { uIni: summary.uIni })
+
+                // 交易表格
+                let eleTable = document.getElementById("ref-table")
+                renderOrdersTable(eleTable, orders)
+
+                // 交易甘特圖
+                let eleTimeline = document.getElementById("ref-timeline")
+                renderOrdersTimeline(eleTimeline, orders)
+
+            });
+
+        </script>
+
+    </body>
+</html>

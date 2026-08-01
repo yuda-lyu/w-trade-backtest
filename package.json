@@ -1,0 +1,31 @@
+{
+  "name": "w-data-tdbacktest",
+  "version": "1.0.0",
+  "main": "dist/w-data-tdbacktest.umd.js",
+  "dependencies": {
+    "dayjs": "^1.11.21",
+    "lodash-es": "^4.18.1",
+    "w-data-tdprovide": "^1.0.3",
+    "wsemi": "^1.8.67"
+  },
+  "devDependencies": {
+    "mocha": "^11.7.6",
+    "w-package-tools": "^1.1.12"
+  },
+  "scripts": {
+    "test": "mocha \"test/unit-*.test.mjs\" --parallel --timeout 60000",
+    "deploy": "gh-pages -d docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuda-lyu/w-data-tdbacktest.git"
+  },
+  "keywords": [
+    "package",
+    "tool",
+    "csv",
+    "nodejs"
+  ],
+  "author": "yuda-lyu(semisphere)",
+  "license": "MIT"
+}

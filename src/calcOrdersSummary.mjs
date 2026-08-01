@@ -1,0 +1,434 @@
+import each from 'lodash-es/each.js'
+import filter from 'lodash-es/filter.js'
+import get from 'lodash-es/get.js'
+import isNumber from 'lodash-es/isNumber.js'
+import map from 'lodash-es/map.js'
+import size from 'lodash-es/size.js'
+import sortBy from 'lodash-es/sortBy.js'
+import dig from 'wsemi/src/dig.mjs'
+import haskey from 'wsemi/src/haskey.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import ispnum from 'wsemi/src/ispnum.mjs'
+import ott from './ott.mjs'
+
+
+/**
+ * 統計全部訂單之回測摘要
+ *
+ * 統計交易次數、勝率、最大回撤、最大持倉、夏普值、最終權益與各盈虧比例等欄位
+ * 訂單需先經calcOrders結算(含uEquity)與calcOrdersRatio計算(含dayHold與rProfitOrLossDay，夏普值計算所需)
+ * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw
+ *
+ * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * @function
+ * @param {Number} uIni 輸入初始資金正數
+ * @param {Array} ordersAll 輸入已結算訂單陣列
+ * @param {String} timeOhlcStart 輸入回測起始秒時間字串
+ * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
+ * @returns {Object} 回傳回測摘要物件
+ * @example
+ *
+ * let arrOhlc = [
+ *     { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+ *     { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+ *     { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+ *     { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+ *     { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+ *     { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+ * ]
+ *
+ * //ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+ * let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+ * let ordersSubmit = [
+ *     { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+ *     { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+ * ]
+ *
+ * let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+ * orders = calcOrdersRatio(orders)
+ * let summary = calcOrdersSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+ * console.log(summary)
+ * // => {
+ * //   btDays: 0,
+ * //   btYears: '0.0',
+ * //   numTrade: 4,
+ * //   numTradeFin: 3,
+ * //   numTradeUnsettled: 1,
+ * //   uTradeAllMax: 200,
+ * //   rTradeAllMax: '20.00%',
+ * //   numTradeAllMax: 2,
+ * //   uDrawdownMax: 3.1000000000000227,
+ * //   rDrawdownMax: '0.31%',
+ * //   rEquivalentDrawdownMax: '1.51%',
+ * //   rSharpe: 7.675814289051032,
+ * //   rWin: '66.67%',
+ * //   uEquityFinal: 1006.6999999999999,
+ * //   uCumuProfitOrLossFinal: 6.700000000000006,
+ * //   rCumuProfitOrLossFinal: '0.67%',
+ * //   rCumuProfitOrLossFinalNormYear: '0.00%',
+ * //   rEquivalentCumuProfitOrLossFinal: '3.35%',
+ * //   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%'
+ * // }
+ *
+ */
+let calcOrdersSummary = (uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
+
+    if (!ispnum(uIni)) {
+        throw new Error(`uIni[${uIni}] is not a positive number`)
+    }
+    if (!isestr(timeOhlcStart)) {
+        throw new Error(`invalid timeOhlcStart[${timeOhlcStart}]`)
+    }
+    if (!isestr(timeOhlcEnd)) {
+        throw new Error(`invalid timeOhlcEnd[${timeOhlcEnd}]`)
+    }
+
+    //sortBy, 已或未平倉訂單一定有timeStart欄位
+    ordersAll = sortBy(ordersAll, 'timeStart')
+
+    let ordersFin = []
+    let ordersUnsettled = []
+    each(ordersAll, (o) => {
+        if (isestr(o.modeResult)) {
+            ordersFin.push(o)
+        }
+        else {
+            ordersUnsettled.push(o)
+        }
+    })
+
+    let numTrade = size(ordersAll) //總交易次數
+    let numTradeFin = size(ordersFin) //總已完成交易次數
+    let numTradeUnsettled = size(ordersUnsettled) //總未完成交易次數
+    let rWin = dig(size(filter(ordersAll, { modeResult: 'profit' })) / numTradeFin * 100, 2) + '%' //單位為%
+    let uDrawdownMax = 0 //最大回撤金額(USDT)
+    let rDrawdownMax = '' //最大回撤比例(%)
+    let rEquivalentDrawdownMax = '' //等效最大回撤比例(%)
+    let uEquityFinal = 0 //最終權益(USDT)
+    let uCumuProfitOrLossFinal = '' //最終盈虧(USDT)
+    let rCumuProfitOrLossFinal = '' //最終盈虧比例(%)
+    let rEquivalentCumuProfitOrLossFinal = '' //最終等效盈虧比例(%)
+    let uTradeAllMax = 0 //最大持倉金額(USDT)
+    let rTradeAllMax = '' //最大持倉比例(%)
+    let numTradeAllMax = 0 //最大持倉筆數(同時持有的部位數)
+    let rSharpe = 0 //夏普值
+    let uMax = uIni //最大盈虧(USDT)
+    let uMaxMax = uIni //最大回撤時之最大盈虧(USDT)
+
+    //kpTrade(持倉金額變化), kpCount(持倉筆數變化)
+    let kpTrade = {}
+    let kpCount = {}
+    each(ordersAll, (o) => {
+
+        //須已平倉單才能計算最大回撤
+        if (isestr(o.modeResult)) {
+
+            //uMax
+            uMax = Math.max(uMax, o.uEquity)
+
+            //uDrawdownMax, rDrawdownMax
+            let uDrawdown = uMax - o.uEquity
+            let rDrawdown = dig(uDrawdown / uMax * 100, 2) + '%' //單位為%
+            if (uDrawdown > uDrawdownMax) {
+                uDrawdownMax = uDrawdown
+                uMaxMax = uMax
+                rDrawdownMax = rDrawdown
+            }
+
+        }
+
+        //已或未平倉皆可計算最大持倉
+        if (true) {
+
+            //dir, 持倉方向
+            let dir = null
+            // dir = o.mode === 'long' ? 1 : -1 //long為正而short為負, 可抵銷
+            dir = 1 //long與short皆為1(皆會增加持倉)
+            // console.log('o.mode', o.mode, dir)
+
+            //下單就增加持倉
+            if (isestr(o.timeStart)) {
+                if (!haskey(kpTrade, o.timeStart)) {
+                    kpTrade[o.timeStart] = 0
+                }
+                kpTrade[o.timeStart] += dir * o.uTrade
+                // console.log('o.timeStart', kpTrade[o.timeStart])
+                if (!haskey(kpCount, o.timeStart)) {
+                    kpCount[o.timeStart] = 0
+                }
+                kpCount[o.timeStart] += 1 //開倉筆數+1
+            }
+
+            //結單就減少持倉
+            if (isestr(o.timeEnd)) {
+                if (!haskey(kpTrade, o.timeEnd)) {
+                    kpTrade[o.timeEnd] = 0
+                }
+                kpTrade[o.timeEnd] -= dir * o.uTrade
+                // console.log('o.timeEnd', kpTrade[o.timeEnd])
+                if (!haskey(kpCount, o.timeEnd)) {
+                    kpCount[o.timeEnd] = 0
+                }
+                kpCount[o.timeEnd] -= 1 //平倉筆數-1
+            }
+
+        }
+
+    })
+    // console.log('kpTrade(未累計)', kpTrade)
+
+    //計算累計持倉
+    if (true) {
+
+        //trades, 轉陣列與排序
+        let trades = []
+        each(kpTrade, (uTradeAll, time) => {
+            if (!isNumber(uTradeAll)) {
+                console.log('time', time)
+                throw new Error(`invalid uTradeAll[${uTradeAll}]`)
+            }
+            trades.push({ time, uTradeAll })
+        })
+        trades = sortBy(trades, 'time')
+        // console.log('trades', trades)
+
+        //紀錄累計值
+        let uAccm = 0
+        let _trades = map(trades, (item) => {
+            uAccm += item.uTradeAll
+            return {
+                ...item,
+                uAccm,
+            }
+        })
+        // console.log('_trades', _trades)
+
+        //_kpTrade
+        let _kpTrade = {}
+        each(_trades, (v) => {
+            _kpTrade[v.time] = v.uAccm
+        })
+
+        //update
+        kpTrade = _kpTrade
+
+    }
+    // console.log('kpTrade(累計)', kpTrade)
+
+    //計算累計持倉筆數(與kpTrade累計同款)
+    if (true) {
+
+        //counts, 轉陣列與排序
+        let counts = []
+        each(kpCount, (numTradeAll, time) => {
+            if (!isNumber(numTradeAll)) {
+                console.log('time', time)
+                throw new Error(`invalid numTradeAll[${numTradeAll}]`)
+            }
+            counts.push({ time, numTradeAll })
+        })
+        counts = sortBy(counts, 'time')
+
+        //紀錄累計值
+        let nAccm = 0
+        let _counts = map(counts, (item) => {
+            nAccm += item.numTradeAll
+            return {
+                ...item,
+                nAccm,
+            }
+        })
+
+        //_kpCount
+        let _kpCount = {}
+        each(_counts, (v) => {
+            _kpCount[v.time] = v.nAccm
+        })
+
+        //update
+        kpCount = _kpCount
+
+    }
+    // console.log('kpCount(累計)', kpCount)
+
+    //計算當前持倉金額與最大當前持倉金額
+    ordersAll = map(ordersAll, (o) => {
+
+        //當前持倉金額(USDT), 以下單時間計算
+        let uTradeAll = get(kpTrade, o.timeStart, null)
+        if (!isNumber(uTradeAll)) {
+            throw new Error(`invalid uTradeAll`)
+        }
+        uTradeAll = Math.abs(uTradeAll) //做多或空皆會持有倉位, 負倉位(當前持倉金額)代表多空可抵銷, 故此處一律取絕對值顯示
+        o.uTradeAll = uTradeAll
+
+        //當前持倉金額佔比(%), 以下單時間計算
+        let rTradeAll = dig(o.uTradeAll / uIni * 100, 2) + '%' //單位為%
+        o.rTradeAll = rTradeAll
+
+        //uTradeAllMax, rTradeAllMax
+        if (uTradeAllMax < o.uTradeAll) {
+            uTradeAllMax = o.uTradeAll
+            rTradeAllMax = o.rTradeAll
+        }
+
+        //當前持倉筆數(同時持有的部位數), 以下單時間計算
+        let numTradeAll = get(kpCount, o.timeStart, null)
+        if (!isNumber(numTradeAll)) {
+            throw new Error(`invalid numTradeAll`)
+        }
+        o.numTradeAll = numTradeAll
+
+        //numTradeAllMax
+        if (numTradeAllMax < o.numTradeAll) {
+            numTradeAllMax = o.numTradeAll
+        }
+
+        return o
+    })
+    // console.log('ordersAll', ordersAll[size(ordersAll) - 1], size(ordersAll))
+
+    //uEquityFinal, uCumuProfitOrLossFinal, rCumuProfitOrLossFinal
+    if (true) {
+        let ind = size(ordersFin) - 1
+        uEquityFinal = get(ordersFin, `${ind}.uEquity`, '') //最終權益(USDT)
+        uCumuProfitOrLossFinal = get(ordersFin, `${ind}.uCumuProfitOrLoss`, '') //最終盈虧(USDT)
+        rCumuProfitOrLossFinal = get(ordersFin, `${ind}.rCumuProfitOrLoss`, '') //最終盈虧比例(%)
+    }
+
+    //rEquivalentDrawdown, 使用最大回撤時之最大盈虧, 扣掉初始資金, 再基於全部交易後才能得知的最大持倉, 換算出等效最大回撤比例
+    if (true) {
+        let v
+        if ((uMaxMax - uIni + uTradeAllMax) > 0) {
+            v = uDrawdownMax / (uMaxMax - uIni + uTradeAllMax)
+        }
+        else {
+            v = 0
+        }
+        rEquivalentDrawdownMax = dig(v * 100, 2) + '%' //單位為%
+        // console.log('uDrawdownMax', uDrawdownMax)
+        // console.log('uMaxMax', uMaxMax)
+        // console.log('uMaxMax - uIni', uMaxMax - uIni)
+        // console.log('uMaxMax - uIni + uTradeAllMax', uMaxMax - uIni + uTradeAllMax)
+    }
+
+    //rEquivalentCumuProfitOrLossFinal
+    if (uTradeAllMax > 0 && isNumber(uCumuProfitOrLossFinal)) {
+        rEquivalentCumuProfitOrLossFinal = uCumuProfitOrLossFinal / uTradeAllMax
+    }
+    else {
+        rEquivalentCumuProfitOrLossFinal = 0
+    }
+    rEquivalentCumuProfitOrLossFinal = dig((rEquivalentCumuProfitOrLossFinal) * 100, 2) + '%' //單位為%
+
+    //rSharpe
+    if (true) {
+
+        let rAvgProfitOrLossDay = 0
+        let rStdProfitOrLossDay = 0
+
+        //rAvgProfitOrLossDay, 加權平均日盈虧比例(加權日均報酬), 把所有交易攤平成連續的日報酬
+        let rrW = 0
+        let rrD = 0
+        each(ordersFin, (o) => {
+            let rW = o.rProfitOrLossDay * o.dayHold
+            rrW += rW
+            let rD = o.dayHold
+            rrD += rD
+        })
+        if (rrD > 0) {
+            rAvgProfitOrLossDay = rrW / rrD
+        }
+
+        //rStdProfitOrLossDay, 加權日盈虧比例標準差(加權日標準差)
+        let rtW = 0
+        each(ordersFin, (o) => {
+            let diff = o.rProfitOrLossDay - rAvgProfitOrLossDay
+            let rW = o.dayHold * (diff * diff)
+            rtW += rW
+        })
+        if (rrD > 1) {
+            rStdProfitOrLossDay = Math.sqrt(rtW / (rrD - 1))
+        }
+
+        //rSharpe, 夏普值
+        if (rStdProfitOrLossDay > 0) {
+            rSharpe = (rAvgProfitOrLossDay / rStdProfitOrLossDay) * Math.sqrt(252)
+        }
+        if (rSharpe < -10) {
+            rSharpe = -10
+        }
+        if (rSharpe > 10) {
+            rSharpe = 10
+        }
+
+    }
+    // console.log('rSharpe', rSharpe)
+
+    let tStart = ott(timeOhlcStart)
+    let tEnd = ott(timeOhlcEnd)
+
+    //回測時長日
+    let btDays = tEnd.diff(tStart, 'day')
+
+    //回測時長年
+    let btYears = btDays / 365
+
+    //年化報酬率
+    let rCumuProfitOrLossFinalNormYear = ''
+    if (true) {
+        let v
+        if (uIni === 0 || btYears === 0) {
+            v = 0
+        }
+        else {
+            v = (uEquityFinal - uIni) / uIni / btYears
+        }
+        rCumuProfitOrLossFinalNormYear = `${dig(v * 100, 2)}%`
+    }
+    // let rCumuProfitOrLossFinalNormYear = `${dig((uEquityFinal - uIni) / uIni / btYears * 100, 2)}%`
+
+    //等效年化報酬率
+    let rEquivalentCumuProfitOrLossFinalNormYear = ''
+    if (true) {
+        let v
+        if (uTradeAllMax === 0 || btYears === 0) {
+            v = 0
+        }
+        else {
+            v = (uEquityFinal - uIni) / uTradeAllMax / btYears
+        }
+        rEquivalentCumuProfitOrLossFinalNormYear = `${dig(v * 100, 2)}%`
+    }
+    // let rEquivalentCumuProfitOrLossFinalNormYear = `${dig((uEquityFinal - uIni) / uTradeAllMax / btYears * 100, 2)}%`
+
+    //summary
+    let summary = {
+        btDays,
+        btYears: dig(btYears, 1),
+        numTrade,
+        numTradeFin,
+        numTradeUnsettled,
+        uTradeAllMax,
+        rTradeAllMax,
+        numTradeAllMax,
+        uDrawdownMax,
+        rDrawdownMax,
+        rEquivalentDrawdownMax,
+        rSharpe,
+        rWin,
+        uEquityFinal,
+        uCumuProfitOrLossFinal,
+        rCumuProfitOrLossFinal,
+        rCumuProfitOrLossFinalNormYear,
+        rEquivalentCumuProfitOrLossFinal,
+        rEquivalentCumuProfitOrLossFinalNormYear,
+    }
+
+    return summary
+}
+
+
+export default calcOrdersSummary
