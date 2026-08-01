@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>calcOrdersSummarySimple.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">calcOrdersSummarySimple.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>//精簡版 calcOrdersSummary — 只算「選股熱路徑」需要的欄位, 純迴圈無 lodash、不需先跑 calcOrdersRatio。
+//
+//用途: walk-forward 選股每組合每日各算一次摘要(數百萬次), 原 calcOrdersRatio+calcOrdersSummary 走 lodash 多趟、配大量物件, 太慢。
+//  本版直接從 orders 一趟算出排序所需的 {numTrade, rWin, 等效年化}(+ 幾個便宜欄), 不算 drawdown/Sharpe/累計曲線。
+//
+//輸入 ordersAll: 已含 timeStart/timeEnd/uTrade/uProfitOrLoss/uEquity/modeResult 的訂單(由 calcOrders/calcOrdersFast/ordersFromBars 設定)。
+//  與原 calcOrdersSummary 的對應欄位 bit-exact:
+//    numTrade / numTradeFin / rWin / uTradeAllMax / rTradeAllMax / uEquityFinal / btDays / btYears /
+//    rEquivalentCumuProfitOrLossFinalNormYear
+//  (演算法與原版一致: 最大同時持倉 = 各單 [timeStart,timeEnd] 佔 uTrade 的最大同時總和, 以「各訂單 timeStart 時刻累計持倉」取 max;
+//   等效年化 = (uEquityFinal - uIni) / uTradeAllMax / 年數。)
+import dig from 'wsemi/src/dig.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import ott from './ott.mjs'
+
+/**
+ * 統計全部訂單之精簡版回測摘要
+ *
+ * 為calcOrdersSummary之精簡版，只算選股熱路徑所需欄位，純迴圈實作且不需先跑calcOrdersRatio
+ * 對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear
+ * 不算drawdown、夏普值與累計曲線
+ *
+ * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * @function
+ * @param {Number} uIni 輸入初始資金正數
+ * @param {Array} ordersAll 輸入已結算訂單陣列(經calcOrders設定timeStart、timeEnd、uTrade、uEquity、modeResult)
+ * @param {String} timeOhlcStart 輸入回測起始秒時間字串
+ * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Boolean} [opt.skipSort=false] 輸入呼叫端保證ordersAll已依timeStart升序時可跳過排序布林值，預設false
+ * @returns {Object} 回傳精簡版回測摘要物件
+ * @example
+ *
+ * let arrOhlc = [
+ *     { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+ *     { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+ *     { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+ *     { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+ *     { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+ *     { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+ * ]
+ *
+ * //ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+ * let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+ * let ordersSubmit = [
+ *     { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+ *     { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+ * ]
+ *
+ * let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+ * let summary = calcOrdersSummarySimple(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+ * console.log(summary)
+ * // => {
+ * //   numTrade: 4,
+ * //   numTradeFin: 3,
+ * //   rWin: '66.67%',
+ * //   uTradeAllMax: 200,
+ * //   rTradeAllMax: '20.00%',
+ * //   uEquityFinal: 1006.6999999999999,
+ * //   btDays: 0,
+ * //   btYears: '0.0',
+ * //   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%',
+ * //   timeOhlcStart: '2020-01-01T00:00:00',
+ * //   timeOhlcEnd: '2020-01-01T20:00:00'
+ * // }
+ *
+ */
+let calcOrdersSummarySimple = (uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt = {}) => {
+
+    //依 timeStart 排序(與原版一致; uEquity 是 calcOrdersFast 依此序的累計)。
+    //  opt.skipSort: 呼叫端保證 ordersAll 已依 timeStart 升序時可跳過 slice+sort(熱路徑省數千筆排序); 預設 false 維持原行為。
+    if (!(opt &amp;&amp; opt.skipSort)) {
+        ordersAll = ordersAll.slice().sort((a, b) => a.timeStart &lt; b.timeStart ? -1 : (a.timeStart > b.timeStart ? 1 : 0))
+    }
+
+    let numTrade = ordersAll.length
+    let numTradeFin = 0
+    let nWin = 0
+    let uEquityFinal = '' //無已平倉時 '' (對齊原版 _.get 預設)
+
+    //持倉變化事件: 下單 +uTrade, 平倉 -uTrade (long/short 皆 +1, 都佔用倉位)
+    let delta = new Map()
+    for (let o of ordersAll) {
+        if (isestr(o.modeResult)) {
+            numTradeFin++
+            if (o.modeResult === 'profit') nWin++
+            uEquityFinal = o.uEquity //依 timeStart 序, 最後一筆已平倉者勝出 = 原版 ordersFin[last].uEquity
+        }
+        delta.set(o.timeStart, (delta.get(o.timeStart) || 0) + o.uTrade)
+        if (isestr(o.timeEnd)) delta.set(o.timeEnd, (delta.get(o.timeEnd) || 0) - o.uTrade)
+    }
+
+    //累計持倉(各時刻) → 各訂單 timeStart 時刻取 max abs = 最大同時持倉
+    let times = [...delta.keys()].sort()
+    let cum = 0
+    let cumAt = new Map()
+    for (let t of times) {
+        cum += delta.get(t); cumAt.set(t, cum)
+    }
+    let uTradeAllMax = 0
+    for (let o of ordersAll) {
+        let v = Math.abs(cumAt.get(o.timeStart))
+        if (v > uTradeAllMax) uTradeAllMax = v
+    }
+
+    let rWin = dig(nWin / numTradeFin * 100, 2) + '%'
+    let rTradeAllMax = dig(uTradeAllMax / uIni * 100, 2) + '%'
+
+    let btDays = ott(timeOhlcEnd).diff(ott(timeOhlcStart), 'day')
+    let btYears = btDays / 365
+
+    let rEquivalentCumuProfitOrLossFinalNormYear
+    {
+        let v = (uTradeAllMax === 0 || btYears === 0) ? 0 : (uEquityFinal - uIni) / uTradeAllMax / btYears
+        rEquivalentCumuProfitOrLossFinalNormYear = `${dig(v * 100, 2)}%`
+    }
+
+    return {
+        numTrade,
+        numTradeFin,
+        rWin,
+        uTradeAllMax,
+        rTradeAllMax,
+        uEquityFinal,
+        btDays,
+        btYears: dig(btYears, 1),
+        rEquivalentCumuProfitOrLossFinalNormYear,
+        timeOhlcStart, //回傳區間起訖(echo 傳入參數, 對齊完整版 calcSummary:53-54; deterministic, 不破壞 bit-exact)
+        timeOhlcEnd,
+    }
+}
+
+export default calcOrdersSummarySimple
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 22:40:17 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

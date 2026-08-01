@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>runStrategy.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">runStrategy.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import each from 'lodash-es/each.js'
+import first from 'lodash-es/first.js'
+import get from 'lodash-es/get.js'
+import last from 'lodash-es/last.js'
+import size from 'lodash-es/size.js'
+import arrSort from 'wsemi/src/arrSort.mjs'
+import haskey from 'wsemi/src/haskey.mjs'
+import isearr from 'wsemi/src/isearr.mjs'
+import iseobj from 'wsemi/src/iseobj.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import isfun from 'wsemi/src/isfun.mjs'
+import pmSeries from 'wsemi/src/pmSeries.mjs'
+import { nowTpeStr } from './ott.mjs'
+import calcOrders from './calcOrders.mjs'
+import calcOrdersRatio from './calcOrdersRatio.mjs'
+import calcOrdersSummary from './calcOrdersSummary.mjs'
+
+
+/**
+ * 執行單一策略回測
+ *
+ * 於各時間點以conds判斷觸發下單(各條件以sym與th比較該key序列之param值，opr為'and'須全真、'or'至少一真)
+ * 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
+ * 僅於全部conds序列皆有值之共同時間點判斷觸發
+ * strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數時reject
+ *
+ * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * @function
+ * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee})欄位
+ * @param {Function} funGetSeries 輸入序列查詢async函數，依key回傳時間序列陣列
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Boolean} [opt.withCalcOrderProfitOrLoss=true] 輸入是否經calcOrders結算訂單布林值，預設true
+ * @param {Boolean} [opt.withSummary=true] 輸入是否計算統計摘要布林值，預設true
+ * @returns {Promise} 回傳Promise，resolve為{orders,summary}物件
+ * @example
+ *
+ * let arrOhlc = [
+ *     { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+ *     { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+ *     { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+ *     { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+ *     { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+ *     { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+ * ]
+ *
+ * let arrSig = [
+ *     { time: '2020-01-01T00:00:00', param: 1 },
+ *     { time: '2020-01-01T04:00:00', param: 0 },
+ *     { time: '2020-01-01T08:00:00', param: 1 },
+ *     { time: '2020-01-01T12:00:00', param: 0 },
+ *     { time: '2020-01-01T16:00:00', param: 0 },
+ *     { time: '2020-01-01T20:00:00', param: 0 },
+ * ]
+ *
+ * let funGetSeries = async (key) => {
+ *     if (key === 'btc') {
+ *         return arrOhlc
+ *     }
+ *     if (key === 'sig') {
+ *         return arrSig
+ *     }
+ *     throw new Error(`invalid key[${key}]`)
+ * }
+ *
+ * let strategy = {
+ *     mode: 'long',
+ *     keyOhlc: 'btc',
+ *     conds: [{ key: 'sig', sym: '>', th: 0.5, opr: 'and' }],
+ *     settings: { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 },
+ * }
+ *
+ * let r = await runStrategy(strategy, funGetSeries)
+ * console.log(r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
+ * // => [
+ * //   '2020-01-01T00:00:00 long 100->105 profit',
+ * //   '2020-01-01T08:00:00 long 103->99.91 loss'
+ * // ]
+ * console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
+ * // => 2 50.00% 1001.8
+ *
+ */
+let runStrategy = async(strategy, funGetSeries, opt = {}) => {
+
+    //mode
+    let mode = get(strategy, 'mode', '')
+    if (mode !== 'long' &amp;&amp; mode !== 'short') {
+        throw new Error(`invalid strategy.mode[${mode}] not 'long' or 'short'`)
+    }
+
+    //keyOhlc
+    let keyOhlc = get(strategy, 'keyOhlc', '')
+    if (!isestr(keyOhlc)) {
+        throw new Error(`invalid strategy.keyOhlc`)
+    }
+
+    //conds
+    let conds = get(strategy, 'conds', [])
+    if (!isearr(conds)) {
+        throw new Error(`invalid strategy.conds`)
+    }
+
+    //nps
+    let nps = size(conds)
+    // console.log('nps', nps)
+
+    //st
+    let st = get(strategy, 'settings', {})
+    if (!iseobj(st)) {
+        st = {
+            uIni: 1000, //初始資金(USDT)
+            uTrade: 1, //每次下單金額(USDT)
+            rTakeProfit: 0.05, //止盈
+            rStopLoss: 0.03, //止損
+            rFee: 0.0005, //手續費
+        }
+    }
+    // console.log('st', st)
+
+    //check
+    if (!isfun(funGetSeries)) {
+        throw new Error(`funGetSeries is not a function`)
+    }
+
+    //withCalcOrderProfitOrLoss
+    let withCalcOrderProfitOrLoss = get(opt, 'withCalcOrderProfitOrLoss', true)
+
+    //withSummary
+    let withSummary = get(opt, 'withSummary', true)
+
+    //arrOhlc
+    let arrOhlc = await funGetSeries(keyOhlc)
+    // console.log('arrOhlc', arrOhlc, last(arrOhlc))
+
+    //因conds需要各時間點都有值才能做交集判斷, 所以須提取各conds所需數據且皆為同起訖時間之長度
+    let kpTimeNum = {} //儲存各數據之全部數據時間, 若出現相同數據時間就+1, 若該時間內累計數字等同於數據種數, 就代表該時間為全部數據皆有之時間
+    let kpArrParams = {} //儲存各數據
+    await pmSeries(conds, async (p) => {
+
+        //arr
+        let arr = await funGetSeries(p.key)
+        // console.log('arr', arr)
+
+        //default
+        if (!haskey(kpArrParams, p.key)) {
+            kpArrParams[p.key] = {}
+        }
+
+        //save
+        each(arr, (v) => {
+            //v.time
+            //v.param
+
+            //save param
+            kpArrParams[p.key][v.time] = v.param
+
+            //default
+            if (!haskey(kpTimeNum, v.time)) {
+                kpTimeNum[v.time] = 0
+            }
+
+            //add 1
+            kpTimeNum[v.time] += 1
+
+        })
+        // console.log('kpArrParams', kpArrParams)
+        // console.log('kpTimeNum', kpTimeNum)
+
+    })
+
+    //timeEff, 各數據皆有共同之數據時間, 為有效時間陣列
+    let timeEff = []
+    if (true) {
+        each(kpTimeNum, (n, time) => {
+            if (n === nps) {
+                timeEff.push(time)
+            }
+        })
+        timeEff = arrSort(timeEff)
+        // console.log('timeEff', timeEff)
+    }
+
+    //kpTimeEff, 轉為字典物件用於後續判斷
+    let kpTimeEff = {}
+    if (true) {
+        each(timeEff, (time) => {
+            kpTimeEff[time] = true
+        })
+    }
+
+    //kpParams, 儲存各有效時間之各數據
+    let kpParams = {}
+    if (true) {
+        each(timeEff, (time) => {
+            kpParams[time] = {}
+            each(conds, (p) => {
+                kpParams[time][p.key] = kpArrParams[p.key][time]
+            })
+        })
+        // console.log('kpParams', kpParams)
+    }
+
+    //timeOhlcStart, timeOhlcEnd
+    let timeOhlcStart = get(first(arrOhlc), 'time', '')
+    let timeOhlcEnd = get(last(arrOhlc), 'time', '')
+    // console.log('timeOhlcStart', timeOhlcStart)
+    // console.log('timeOhlcEnd', timeOhlcEnd)
+
+    //orders
+    let orders = []
+    await pmSeries(arrOhlc, async(v) => {
+        // console.log('v', v)
+
+        //time
+        let time = get(v, 'time')
+        // console.log('time', time)
+
+        //check
+        if (!haskey(kpTimeEff, time)) {
+            return true //跳出換下一個
+        }
+        // console.log('time', time)
+
+        //bTrigger
+        let bTrigger = true
+        if (true) {
+
+            //bs
+            let bs = []
+            each(conds, (cond, kcond) => {
+
+                //y, 儲存值
+                let y = kpParams[time][cond.key]
+                // console.log(time, cond.key, 'y', y)
+
+                //sym, th, opr
+                let sym = get(cond, 'sym', '>')
+                let th = get(cond, 'th', 0)
+                let opr = get(cond, 'opr', null)
+                if (opr !== 'and' &amp;&amp; opr !== 'or') {
+                    opr = 'and'
+                }
+                // console.log(time, cond.key, 'sym', sym)
+                // console.log(time, cond.key, 'th', th)
+                // console.log(time, cond.key, 'opr', opr)
+
+                //b
+                let b = false
+                if (sym === '>') {
+                    b = y > th
+                }
+                else {
+                    b = y &lt; th
+                }
+
+                //push
+                bs.push({
+                    opr,
+                    b,
+                })
+
+            })
+
+            //依各 cond 的 opr 分組合成 bTrigger:
+            //  'and' 組 → 全部須為 true(必要條件); 'or' 組 → 至少一個 true(選擇條件, 無 or 組則不約束)
+            //  bTrigger = (所有 and 條件皆真) AND (任一 or 條件為真 或 根本沒有 or 條件)
+            let okAnd = bs.filter((v) => v.opr === 'and').every((v) => v.b) //空 and 組 → every 回 true(無約束)
+            let bsOr = bs.filter((v) => v.opr === 'or')
+            let okOr = bsOr.length === 0 || bsOr.some((v) => v.b) //沒有 or 條件 → 不約束; 有則至少一個須真
+            bTrigger = okAnd &amp;&amp; okOr
+
+        }
+
+        let bLong = false
+        let bShort = false
+        if (bTrigger) {
+            if (mode === 'long') {
+                bLong = true
+            }
+            else { //'short'
+                bShort = true
+            }
+        }
+
+        if (bLong) { //做多
+            // console.log('long...', time, v.Close)
+            let o = {
+                mode: 'long',
+                timeStart: time, //下單買入時所屬k棒時間
+                priceStart: v.Close, //單買入時Close價格
+                uTrade: st.uTrade, //下單金額(USDT)
+                rTakeProfit: st.rTakeProfit, //下單設定止盈比例
+                priceTakeProfit: (1 + st.rTakeProfit) * v.Close, //下單設定止盈價格(USDT)
+                rStopLoss: st.rStopLoss, //下單設定止損比例
+                priceStopLoss: (1 - st.rStopLoss) * v.Close, //下單設定止損價格(USDT)
+                timeEnd: '', //賣出時所屬k棒時間, 待最後結算更新
+                priceEnd: '', //賣出時Close價格, 待最後結算更新
+                modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
+                rFee: st.rFee, //手續費比例
+                uFee: st.rFee * st.uTrade, //交易手續費(USDT)
+                uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
+                rProfitOrLoss: '', //盈虧比例, 待最後結算更新
+                uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新
+                rCumuProfitOrLoss: '', //累計盈虧比例(%), 待最後結算更新
+                uEquity: '', //當前權益金額(USDT), 待最後結算更新
+                uTradeAll: '', //當前持倉金額(USDT), 待最後結算更新
+                rTradeAll: '', //當前持倉金額佔比(%), 待最後結算更新
+            }
+            orders.push(o)
+        }
+        else if (bShort) { //做空
+            // console.log('short...', time, v.Close)
+            let o = {
+                mode: 'short',
+                timeStart: time, //賣出時所屬k棒時間
+                priceStart: v.Close, //賣出時Close價格
+                uTrade: st.uTrade, //下單金額(USDT)
+                rTakeProfit: st.rTakeProfit, //止盈
+                priceTakeProfit: (1 - st.rTakeProfit) * v.Close, //止盈價格(USDT)
+                rStopLoss: st.rStopLoss, //止損
+                priceStopLoss: (1 + st.rStopLoss) * v.Close, //止損價格(USDT)
+                timeEnd: '', //買入時所屬k棒時間, 待最後結算更新
+                priceEnd: '', //買入時Close價格, 待最後結算更新
+                modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
+                rFee: st.rFee, //手續費比例
+                uFee: st.rFee * st.uTrade, //交易手續費(USDT)
+                uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
+                rProfitOrLoss: '', //盈虧比例, 待最後結算更新
+                uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新
+                rCumuProfitOrLoss: '', //累計盈虧比例(%), 待最後結算更新
+                uEquity: '', //當前權益金額(USDT), 待最後結算更新
+                uTradeAll: '', //當前持倉金額(USDT), 待最後結算更新
+                rTradeAll: '', //當前持倉金額佔比(%), 待最後結算更新
+            }
+            orders.push(o)
+        }
+
+    })
+    // console.log('orders', orders)
+    // console.log('size(orders)', size(orders))
+
+    //withCalcOrderProfitOrLoss
+    if (withCalcOrderProfitOrLoss) {
+        orders = await calcOrders(arrOhlc, orders, { uIni: st.uIni })
+        // console.log('orders', orders)
+    }
+
+    //summary
+    let summary = {
+        timeTest: nowTpeStr(),
+        timeOhlcStart,
+        timeOhlcEnd,
+        uIni: get(st, 'uIni', ''), //額外提取uIni儲存至summary, 其他參數須依照單策略或多策略自行再添加
+    }
+
+    //withSummary
+    if (withSummary) {
+
+        //計算各單持倉天數, 等效日盈虧比例
+        orders = calcOrdersRatio(orders)
+
+        //評分計算
+        let _summary = calcOrdersSummary(st.uIni, orders, timeOhlcStart, timeOhlcEnd)
+
+        //merge
+        summary = {
+            ...summary,
+            ..._summary,
+        }
+
+    }
+
+    //r
+    let r = {
+        orders,
+        summary,
+    }
+    // console.log('r', r)
+
+    return r
+}
+
+
+export default runStrategy
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 22:40:17 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>calcSummary.mjs - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">calcSummary.mjs</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import map from 'lodash-es/map.js'
+import sortBy from 'lodash-es/sortBy.js'
+import dig from 'wsemi/src/dig.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import ispnum from 'wsemi/src/ispnum.mjs'
+import { nowTpeStr } from './ott.mjs'
+import calcOrdersRatio from './calcOrdersRatio.mjs'
+import calcOrdersSummary from './calcOrdersSummary.mjs'
+
+
+/**
+ * 基於全部交易單重算累積收益並統計回測摘要
+ *
+ * 依timeStart排序後重算各已平倉單之uEquity、uCumuProfitOrLoss與rCumuProfitOrLoss(多策略各自結算後合併重算用)
+ * 再執行calcOrdersRatio與calcOrdersSummary，並附加timeTest、timeOhlcStart、timeOhlcEnd、uIni欄位
+ * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject
+ *
+ * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * @function
+ * @param {Number} uIni 輸入初始資金正數
+ * @param {Array} orders 輸入已結算訂單陣列(經calcOrders)
+ * @param {String} timeOhlcStart 輸入回測起始秒時間字串
+ * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @returns {Promise} 回傳Promise，resolve為回測摘要物件
+ * @example
+ *
+ * let arrOhlc = [
+ *     { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+ *     { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+ *     { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+ *     { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+ *     { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+ *     { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+ * ]
+ *
+ * //ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+ * let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+ * let ordersSubmit = [
+ *     { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+ *     { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+ *     { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+ * ]
+ *
+ * let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+ * let summary = await calcSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+ * console.log(summary)
+ * // => {
+ * //   timeTest: '2026-08-01T22:27:10+08:00', //執行當下時間
+ * //   timeOhlcStart: '2020-01-01T00:00:00',
+ * //   timeOhlcEnd: '2020-01-01T20:00:00',
+ * //   uIni: 1000,
+ * //   btDays: 0,
+ * //   btYears: '0.0',
+ * //   numTrade: 4,
+ * //   numTradeFin: 3,
+ * //   numTradeUnsettled: 1,
+ * //   uTradeAllMax: 200,
+ * //   rTradeAllMax: '20.00%',
+ * //   numTradeAllMax: 2,
+ * //   uDrawdownMax: 3.1000000000000227,
+ * //   rDrawdownMax: '0.31%',
+ * //   rEquivalentDrawdownMax: '1.51%',
+ * //   rSharpe: 7.675814289051032,
+ * //   rWin: '66.67%',
+ * //   uEquityFinal: 1006.6999999999999,
+ * //   uCumuProfitOrLossFinal: 6.700000000000006,
+ * //   rCumuProfitOrLossFinal: '0.67%',
+ * //   rCumuProfitOrLossFinalNormYear: '0.00%',
+ * //   rEquivalentCumuProfitOrLossFinal: '3.35%',
+ * //   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%'
+ * // }
+ *
+ */
+let calcSummary = async(uIni, orders, timeOhlcStart, timeOhlcEnd, opt = {}) => {
+
+    if (!ispnum(uIni)) {
+        throw new Error(`uIni[${uIni}] is not a positive number`)
+    }
+    if (!isestr(timeOhlcStart)) {
+        throw new Error(`invalid timeOhlcStart[${timeOhlcStart}]`)
+    }
+    if (!isestr(timeOhlcEnd)) {
+        throw new Error(`invalid timeOhlcEnd[${timeOhlcEnd}]`)
+    }
+
+    //sortBy, 已或未平倉訂單一定有timeStart欄位
+    orders = sortBy(orders, 'timeStart')
+
+    //因各策略執行已自行計算, 須基於全策略全交易單重算累積收益
+    let uEquity = uIni
+    let uCumuProfitOrLoss = 0
+    orders = map(orders, (o) => {
+
+        //未平倉訂單不計算
+        if (!isestr(o.modeResult)) {
+            return o
+        }
+
+        uEquity += o.uProfitOrLoss
+        o.uEquity = uEquity
+        uCumuProfitOrLoss += o.uProfitOrLoss
+        o.uCumuProfitOrLoss = uCumuProfitOrLoss
+        o.rCumuProfitOrLoss = dig((o.uCumuProfitOrLoss / uIni) * 100, 2) + '%' //單位為%
+
+        return o
+    })
+
+    //計算各單持倉天數, 等效日盈虧比例
+    orders = calcOrdersRatio(orders)
+
+    //評分計算
+    let _summary = calcOrdersSummary(uIni, orders, timeOhlcStart, timeOhlcEnd)
+
+    //summary
+    let summary = {
+        timeTest: nowTpeStr(),
+        timeOhlcStart,
+        timeOhlcEnd,
+        uIni,
+        ..._summary,
+    }
+
+    return summary
+}
+
+
+export default calcSummary
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 22:40:17 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

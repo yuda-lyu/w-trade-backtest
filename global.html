@@ -1,0 +1,3474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>Global - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">Global</h1>
+    
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>
+        
+            
+        
+        </h2>
+        
+    
+</header>
+
+<article>
+    
+        <div class="container-overview">
+        
+            
+
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+            
+
+            
+        
+        </div>
+    
+
+    
+
+    
+
+    
+    
+    
+
+     
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcOrders"><span class="type-signature type-signature-async">(async) </span>calcOrders<span class="signature">(arrOhlc, orders, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>結算訂單，依K線序列判斷各下單之止盈止損觸發並計算盈虧</p>
+<p>各單僅檢查time大於timeStart之K棒，long以Low&lt;=priceStopLoss先判止損、High&gt;=priceTakeProfit判止盈，short以High&gt;=priceStopLoss先判止損、Low&lt;=priceTakeProfit判止盈
+long盈虧為uTrade*(priceEnd/priceStart)-uTrade-2<em>uFee，short盈虧為(priceStart-priceEnd)</em>(uTrade/priceStart)-2*uFee
+依timeStart排序逐單累計uCumuProfitOrLoss與uEquity(自uIni起算)，modeResult為盈虧&lt;0時'loss'否則'profit'，未觸發止盈止損者維持原單(未平倉)</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcOrders.mjs.html">calcOrders.mjs</a>, <a href="calcOrders.mjs.html#line69">line 69</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+let orders = [{
+    mode: 'long',
+    timeStart: '2020-01-01T00:00:00',
+    priceStart: 100,
+    uTrade: 100,
+    priceTakeProfit: 105,
+    priceStopLoss: 97,
+    timeEnd: '',
+    priceEnd: '',
+    modeResult: '',
+    uFee: 0.05,
+}]
+
+calcOrders(arrOhlc, orders, { uIni: 1000 })
+    .then((rs) => {
+        console.log(rs[0])
+        // => {
+        //   mode: 'long',
+        //   timeStart: '2020-01-01T00:00:00',
+        //   priceStart: 100,
+        //   uTrade: 100,
+        //   priceTakeProfit: 105,
+        //   priceStopLoss: 97,
+        //   timeEnd: '2020-01-01T04:00:00',
+        //   priceEnd: 105,
+        //   modeResult: 'profit',
+        //   uFee: 0.05,
+        //   uProfitOrLoss: 4.9,
+        //   rProfitOrLoss: 0.049,
+        //   uCumuProfitOrLoss: 4.9,
+        //   rCumuProfitOrLoss: '0.49%',
+        //   uEquity: 1004.9
+        // }
+    })</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>arrOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入K線陣列，各元素需含time、High、Low欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>orders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入下單陣列，各元素需含mode('long'或'short')、timeStart、priceStart、uTrade、priceTakeProfit、priceStopLoss、uFee欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>1000</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入初始資金數字，預設1000</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為結算後訂單陣列</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcOrdersRatio"><span class="type-signature"></span>calcOrdersRatio<span class="signature">(orders)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算各已平倉訂單之持倉天數與等效日盈虧比例</p>
+<p>dayHold以timeStart與timeEnd之日期差+1計算，rProfitOrLossDay為(1+rProfitOrLoss)^(1/dayHold)-1
+modeResult非有效字串(未平倉)之訂單不計算</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcOrdersRatio.mjs.html">calcOrdersRatio.mjs</a>, <a href="calcOrdersRatio.mjs.html#line35">line 35</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let orders = calcOrdersRatio([{
+    modeResult: 'profit',
+    timeStart: '2020-01-01T20:00:00',
+    timeEnd: '2020-01-03T04:00:00',
+    rProfitOrLoss: 0.331,
+}])
+console.log(orders[0])
+// => {
+//   modeResult: 'profit',
+//   timeStart: '2020-01-01T20:00:00',
+//   timeEnd: '2020-01-03T04:00:00',
+//   rProfitOrLoss: 0.331,
+//   dayHold: 3,
+//   rProfitOrLossDay: 0.10000000000000009
+// }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>orders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入已結算訂單陣列，各元素需含modeResult、timeStart、timeEnd、rProfitOrLoss欄位</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳附加dayHold與rProfitOrLossDay之訂單陣列</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcOrdersSummary"><span class="type-signature"></span>calcOrdersSummary<span class="signature">(uIni, ordersAll, timeOhlcStart, timeOhlcEnd)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>統計全部訂單之回測摘要</p>
+<p>統計交易次數、勝率、最大回撤、最大持倉、夏普值、最終權益與各盈虧比例等欄位
+訂單需先經calcOrders結算(含uEquity)與calcOrdersRatio計算(含dayHold與rProfitOrLossDay，夏普值計算所需)
+uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcOrdersSummary.mjs.html">calcOrdersSummary.mjs</a>, <a href="calcOrdersSummary.mjs.html#line76">line 76</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+//ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+let ordersSubmit = [
+    { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+    { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+]
+
+let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+orders = calcOrdersRatio(orders)
+let summary = calcOrdersSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+console.log(summary)
+// => {
+//   btDays: 0,
+//   btYears: '0.0',
+//   numTrade: 4,
+//   numTradeFin: 3,
+//   numTradeUnsettled: 1,
+//   uTradeAllMax: 200,
+//   rTradeAllMax: '20.00%',
+//   numTradeAllMax: 2,
+//   uDrawdownMax: 3.1000000000000227,
+//   rDrawdownMax: '0.31%',
+//   rEquivalentDrawdownMax: '1.51%',
+//   rSharpe: 7.675814289051032,
+//   rWin: '66.67%',
+//   uEquityFinal: 1006.6999999999999,
+//   uCumuProfitOrLossFinal: 6.700000000000006,
+//   rCumuProfitOrLossFinal: '0.67%',
+//   rCumuProfitOrLossFinalNormYear: '0.00%',
+//   rEquivalentCumuProfitOrLossFinal: '3.35%',
+//   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%'
+// }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入初始資金正數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ordersAll</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入已結算訂單陣列</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入回測起始秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入回測結束秒時間字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳回測摘要物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcOrdersSummarySimple"><span class="type-signature"></span>calcOrdersSummarySimple<span class="signature">(uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>統計全部訂單之精簡版回測摘要</p>
+<p>為calcOrdersSummary之精簡版，只算選股熱路徑所需欄位，純迴圈實作且不需先跑calcOrdersRatio
+對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear
+不算drawdown、夏普值與累計曲線</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcOrdersSummarySimple.mjs.html">calcOrdersSummarySimple.mjs</a>, <a href="calcOrdersSummarySimple.mjs.html#line70">line 70</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+//ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+let ordersSubmit = [
+    { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+    { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+]
+
+let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+let summary = calcOrdersSummarySimple(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+console.log(summary)
+// => {
+//   numTrade: 4,
+//   numTradeFin: 3,
+//   rWin: '66.67%',
+//   uTradeAllMax: 200,
+//   rTradeAllMax: '20.00%',
+//   uEquityFinal: 1006.6999999999999,
+//   btDays: 0,
+//   btYears: '0.0',
+//   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%',
+//   timeOhlcStart: '2020-01-01T00:00:00',
+//   timeOhlcEnd: '2020-01-01T20:00:00'
+// }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入初始資金正數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ordersAll</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入已結算訂單陣列(經calcOrders設定timeStart、timeEnd、uTrade、uEquity、modeResult)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測起始秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測結束秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>skipSort</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>false</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入呼叫端保證ordersAll已依timeStart升序時可跳過排序布林值，預設false</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳精簡版回測摘要物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcSummary"><span class="type-signature type-signature-async">(async) </span>calcSummary<span class="signature">(uIni, orders, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>基於全部交易單重算累積收益並統計回測摘要</p>
+<p>依timeStart排序後重算各已平倉單之uEquity、uCumuProfitOrLoss與rCumuProfitOrLoss(多策略各自結算後合併重算用)
+再執行calcOrdersRatio與calcOrdersSummary，並附加timeTest、timeOhlcStart、timeOhlcEnd、uIni欄位
+uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcSummary.mjs.html">calcSummary.mjs</a>, <a href="calcSummary.mjs.html#line76">line 76</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+//ordersSubmit, 4張下單: 前3張分別於後續K棒觸發止盈或止損, 第4張未觸發(未平倉)
+let kpDef = { uTrade: 100, timeEnd: '', priceEnd: '', modeResult: '', uFee: 0.05 }
+let ordersSubmit = [
+    { mode: 'long', timeStart: '2020-01-01T00:00:00', priceStart: 100, priceTakeProfit: 105, priceStopLoss: 97, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T04:00:00', priceStart: 105, priceTakeProfit: 110.25, priceStopLoss: 101.85, ...kpDef },
+    { mode: 'short', timeStart: '2020-01-01T08:00:00', priceStart: 103, priceTakeProfit: 97.85, priceStopLoss: 106.09, ...kpDef },
+    { mode: 'long', timeStart: '2020-01-01T16:00:00', priceStart: 93, priceTakeProfit: 105, priceStopLoss: 85, ...kpDef },
+]
+
+let orders = await calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+let summary = await calcSummary(1000, orders, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+console.log(summary)
+// => {
+//   timeTest: '2026-08-01T22:27:10+08:00', //執行當下時間
+//   timeOhlcStart: '2020-01-01T00:00:00',
+//   timeOhlcEnd: '2020-01-01T20:00:00',
+//   uIni: 1000,
+//   btDays: 0,
+//   btYears: '0.0',
+//   numTrade: 4,
+//   numTradeFin: 3,
+//   numTradeUnsettled: 1,
+//   uTradeAllMax: 200,
+//   rTradeAllMax: '20.00%',
+//   numTradeAllMax: 2,
+//   uDrawdownMax: 3.1000000000000227,
+//   rDrawdownMax: '0.31%',
+//   rEquivalentDrawdownMax: '1.51%',
+//   rSharpe: 7.675814289051032,
+//   rWin: '66.67%',
+//   uEquityFinal: 1006.6999999999999,
+//   uCumuProfitOrLossFinal: 6.700000000000006,
+//   rCumuProfitOrLossFinal: '0.67%',
+//   rCumuProfitOrLossFinalNormYear: '0.00%',
+//   rEquivalentCumuProfitOrLossFinal: '3.35%',
+//   rEquivalentCumuProfitOrLossFinalNormYear: '0.00%'
+// }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入初始資金正數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>orders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入已結算訂單陣列(經calcOrders)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測起始秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測結束秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為回測摘要物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="closeAndSummaryOrders"><span class="type-signature type-signature-async">(async) </span>closeAndSummaryOrders<span class="signature">(fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>結算下單清單並輸出訂單、摘要與報告檔案</p>
+<p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，依timeOhlcStart至timeOhlcEnd範圍取keyOhlc之K線序列
+經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
+fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="closeAndSummaryOrders.mjs.html">closeAndSummaryOrders.mjs</a>, <a href="closeAndSummaryOrders.mjs.html#line75">line 75</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import fs from 'fs'
+
+let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+//建立數據資料夾, fdOhlc放K線序列, fdParam放指標參數序列
+fs.mkdirSync('./data-ohlc', { recursive: true })
+fs.mkdirSync('./data-param', { recursive: true })
+fs.writeFileSync('./data-ohlc/btc.json', JSON.stringify(arrOhlc), 'utf8')
+
+let ordersSubmit = [{
+    mode: 'long',
+    timeStart: '2020-01-01T00:00:00',
+    priceStart: 100,
+    uTrade: 100,
+    priceTakeProfit: 105,
+    priceStopLoss: 97,
+    timeEnd: '',
+    priceEnd: '',
+    modeResult: '',
+    uFee: 0.05,
+}]
+
+await closeAndSummaryOrders('./data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
+console.log(fs.readdirSync('./result'))
+// => [ 'orders.json', 'report.html', 'summary.json' ]</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>fdOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入儲存K線(ohlc)序列資料夾字串，各序列以<code>${key}.json</code>儲存</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fdParam</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入儲存指標參數序列資料夾字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入初始資金正數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測起始秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入回測結束秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>keyOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入K線序列key字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ordersSubmit</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入下單陣列(格式同calcOrders之orders)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fdTest</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入輸出結果資料夾字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>writeOrders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否輸出orders.json布林值，預設true</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>writeSummary</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否輸出summary.json布林值，預設true</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>writeReport</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否輸出report.html布林值，預設true</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，無resolve值，於fdTest輸出結果檔案</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="genReport"><span class="type-signature"></span>genReport<span class="signature">(r, fpOut)</span><span class="type-signature"> &rarr; {undefined}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>產出html回測報告</p>
+<p>讀取與本模組同資料夾之模板資產(tmp.html與render*.js)，置換{name}、{orders}、{summary}後寫出html
+報告內含權益曲線、訂單表格、時間軸與摘要</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="genReport.mjs.html">genReport.mjs</a>, <a href="genReport.mjs.html#line28">line 28</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>//rr為runStrategies範例之回傳{orders,summary}
+genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './report.html')
+// => 於'./report.html'寫出html報告</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>r</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入報告物件，需含name(報告名稱字串)、orders(訂單陣列)、summary(摘要物件)欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fpOut</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入輸出html檔案路徑字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>無回傳，於fpOut寫出html報告</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">undefined</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="runStrategies"><span class="type-signature type-signature-async">(async) </span>runStrategies<span class="signature">(strategies, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>執行多策略回測</p>
+<p>逐策略呼叫runStrategy(withSummary:false)，各單附加策略sid後合併並依timeStart排序
+以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
+個別策略執行失敗(如時間點無參數無法下單)時強制略過</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="runStrategies.mjs.html">runStrategies.mjs</a>, <a href="runStrategies.mjs.html#line79">line 79</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+let arrSig = [
+    { time: '2020-01-01T00:00:00', param: 1 },
+    { time: '2020-01-01T04:00:00', param: 0 },
+    { time: '2020-01-01T08:00:00', param: 1 },
+    { time: '2020-01-01T12:00:00', param: 0 },
+    { time: '2020-01-01T16:00:00', param: 0 },
+    { time: '2020-01-01T20:00:00', param: 0 },
+]
+
+let funGetSeries = async (key) => {
+    if (key === 'btc') {
+        return arrOhlc
+    }
+    if (key === 'sig') {
+        return arrSig
+    }
+    throw new Error(`invalid key[${key}]`)
+}
+
+let settings = { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 }
+let strategies = [
+    { sid: 's1', mode: 'long', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '>', th: 0.5, opr: 'and' }], settings },
+    { sid: 's2', mode: 'short', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '&lt;', th: 0.5, opr: 'and' }], settings },
+]
+
+let rr = await runStrategies(strategies, funGetSeries)
+console.log(rr.orders.map((o) => `${o.sid} ${o.timeStart} ${o.mode} ${o.modeResult || 'unsettled'}`))
+// => [
+//   's1 2020-01-01T00:00:00 long profit',
+//   's2 2020-01-01T04:00:00 short profit',
+//   's1 2020-01-01T08:00:00 long loss',
+//   's2 2020-01-01T12:00:00 short loss',
+//   's2 2020-01-01T16:00:00 short loss',
+//   's2 2020-01-01T20:00:00 short unsettled'
+// ]
+console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
+// => 2000 6 40.00%</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>strategies</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入策略陣列，各元素需含sid與runStrategy之strategy欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>funGetSeries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入序列查詢async函數，依key回傳時間序列陣列</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>withCalcOrderProfitOrLoss</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否經calcOrders結算訂單布林值，預設true</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>withSummary</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否計算統計摘要布林值，預設true</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為{orders,summary}物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="runStrategy"><span class="type-signature type-signature-async">(async) </span>runStrategy<span class="signature">(strategy, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>執行單一策略回測</p>
+<p>於各時間點以conds判斷觸發下單(各條件以sym與th比較該key序列之param值，opr為'and'須全真、'or'至少一真)
+觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
+僅於全部conds序列皆有值之共同時間點判斷觸發
+strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數時reject</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="runStrategy.mjs.html">runStrategy.mjs</a>, <a href="runStrategy.mjs.html#line82">line 82</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+let arrSig = [
+    { time: '2020-01-01T00:00:00', param: 1 },
+    { time: '2020-01-01T04:00:00', param: 0 },
+    { time: '2020-01-01T08:00:00', param: 1 },
+    { time: '2020-01-01T12:00:00', param: 0 },
+    { time: '2020-01-01T16:00:00', param: 0 },
+    { time: '2020-01-01T20:00:00', param: 0 },
+]
+
+let funGetSeries = async (key) => {
+    if (key === 'btc') {
+        return arrOhlc
+    }
+    if (key === 'sig') {
+        return arrSig
+    }
+    throw new Error(`invalid key[${key}]`)
+}
+
+let strategy = {
+    mode: 'long',
+    keyOhlc: 'btc',
+    conds: [{ key: 'sig', sym: '>', th: 0.5, opr: 'and' }],
+    settings: { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 },
+}
+
+let r = await runStrategy(strategy, funGetSeries)
+console.log(r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
+// => [
+//   '2020-01-01T00:00:00 long 100->105 profit',
+//   '2020-01-01T08:00:00 long 103->99.91 loss'
+// ]
+console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
+// => 2 50.00% 1001.8</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>strategy</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee})欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>funGetSeries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入序列查詢async函數，依key回傳時間序列陣列</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>withCalcOrderProfitOrLoss</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否經calcOrders結算訂單布林值，預設true</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>withSummary</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>true</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否計算統計摘要布林值，預設true</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為{orders,summary}物件</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 22:40:17 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
