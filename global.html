@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
     
 </nav>
 
@@ -144,7 +144,7 @@
 <p>各單僅檢查time大於timeStart之K棒，long以Low&lt;=priceStopLoss先判止損、High&gt;=priceTakeProfit判止盈，short以High&gt;=priceStopLoss先判止損、Low&lt;=priceTakeProfit判止盈
 long盈虧為uTrade*(priceEnd/priceStart)-uTrade-2<em>uFee，short盈虧為(priceStart-priceEnd)</em>(uTrade/priceStart)-2*uFee
 依timeStart排序逐單累計uCumuProfitOrLoss與uEquity(自uIni起算)，modeResult為盈虧&lt;0時'loss'否則'profit'，未觸發止盈止損者維持原單(未平倉)</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -514,7 +514,7 @@ calcOrders(arrOhlc, orders, { uIni: 1000 })
     <dd class="tag-description"><ul class="dummy"><li><p>計算各已平倉訂單之持倉天數與等效日盈虧比例</p>
 <p>dayHold以timeStart與timeEnd之日期差+1計算，rProfitOrLossDay為(1+rProfitOrLoss)^(1/dayHold)-1
 modeResult非有效字串(未平倉)之訂單不計算</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -719,7 +719,7 @@ console.log(orders[0])
 <p>統計交易次數、勝率、最大回撤、最大持倉、夏普值、最終權益與各盈虧比例等欄位
 訂單需先經calcOrders結算(含uEquity)與calcOrdersRatio計算(含dayHold與rProfitOrLossDay，夏普值計算所需)
 uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -1024,7 +1024,7 @@ console.log(summary)
 <p>為calcOrdersSummary之精簡版，只算選股熱路徑所需欄位，純迴圈實作且不需先跑calcOrdersRatio
 對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear
 不算drawdown、夏普值與累計曲線</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -1494,7 +1494,7 @@ console.log(summary)
 <p>依timeStart排序後重算各已平倉單之uEquity、uCumuProfitOrLoss與rCumuProfitOrLoss(多策略各自結算後合併重算用)
 再執行calcOrdersRatio與calcOrdersSummary，並附加timeTest、timeOhlcStart、timeOhlcEnd、uIni欄位
 uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -1906,7 +1906,7 @@ console.log(summary)
 <p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，依timeOhlcStart至timeOhlcEnd範圍取keyOhlc之K線序列
 經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
 fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -2584,7 +2584,536 @@ console.log(fs.readdirSync('./result'))
 
     
 
-    <h4 class="name" id="genReport"><span class="type-signature"></span>genReport<span class="signature">(r, fpOut)</span><span class="type-signature"> &rarr; {undefined}</span></h4>
+    <h4 class="name" id="genReport"><span class="type-signature type-signature-async">(async) </span>genReport<span class="signature">(ott, fpOrders, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>由orders.json產製績效html報表</p>
+<p>讀取orders.json(已結算訂單陣列)後，經calcSummary統計摘要，再以genReportCore產出html報表
+訂單須為已結算形(含uProfitOrLoss、uEquity等欄位)，未結算單(timeEnd為空)仍可計算，計入summary.numTradeUnsettled
+fpOrders非有效字串或非檔案、內容非有效陣列時throw</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="genReport.mjs.html">genReport.mjs</a>, <a href="genReport.mjs.html#line61">line 61</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import fs from 'fs'//orders為已結算訂單陣列(如runStrategy、runStrategies或closeAndSummaryOrders產出)let orders = [{    mode: 'long',    timeStart: '2020-01-01T00:00:00',    priceStart: 100,    uTrade: 100,    priceTakeProfit: 105,    priceStopLoss: 97,    timeEnd: '2020-01-01T04:00:00',    priceEnd: 105,    modeResult: 'profit',    uFee: 0.05,    uProfitOrLoss: 4.9,    rProfitOrLoss: 0.049,    uCumuProfitOrLoss: 4.9,    uEquity: 1004.9,}]fs.mkdirSync('./result', { recursive: true })fs.writeFileSync('./result/orders.json', JSON.stringify(orders), 'utf8')let r = await genReport(ott, './result/orders.json', { name: '示範策略', uIni: 1000 })console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)// => 1 100.00% 1004.9console.log(fs.readdirSync('./result'))// => [ 'orders.json', 'report.html' ]</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fpOrders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入orders.json檔案路徑字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>fpOut</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>''</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入輸出html檔案路徑字串，預設為與orders.json同資料夾之report.html</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>''</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入報表標題字串，預設為orders.json所在資料夾名</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>uIni</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入初始資金數值，預設由首筆已結算單推回(uEquity - uCumuProfitOrLoss)，推不出則為1000</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>''</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入摘要統計起始秒時間字串，影響btDays與年化，預設由訂單最早timeStart推得，注意訂單起訖僅為「有單的範圍」，若實際回測窗較寬(頭尾無單)年化會被高估，建議明給</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>''</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入摘要統計結束秒時間字串，預設由訂單最晚timeEnd(未平倉單取timeStart)推得</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>withWriteSummary</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>false</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否同時輸出summary.json(與fpOut同資料夾)布林值，預設false</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為物件，內含orders(訂單陣列)、summary(摘要物件)、fpOut(輸出html路徑)欄位</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="genReportCore"><span class="type-signature"></span>genReportCore<span class="signature">(r, fpOut)</span><span class="type-signature"> &rarr; {undefined}</span></h4>
 
     
 
@@ -2597,13 +3126,13 @@ console.log(fs.readdirSync('./result'))
     <dd class="tag-description"><ul class="dummy"><li><p>產出html回測報告</p>
 <p>讀取與本模組同資料夾之模板資產(tmp.html與render*.js)，置換{name}、{orders}、{summary}後寫出html
 報告內含權益曲線、訂單表格、時間軸與摘要</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="genReport.mjs.html">genReport.mjs</a>, <a href="genReport.mjs.html#line28">line 28</a>
+        <a href="genReportCore.mjs.html">genReportCore.mjs</a>, <a href="genReportCore.mjs.html#line28">line 28</a>
     </li></ul></dd>
     
 
@@ -2651,7 +3180,7 @@ console.log(fs.readdirSync('./result'))
     <h5 class="h5-examples">Example</h5>
     
     <pre class="prettyprint"><code>//rr為runStrategies範例之回傳{orders,summary}
-genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './report.html')
+genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './report.html')
 // => 於'./report.html'寫出html報告</code></pre>
 
 
@@ -2790,7 +3319,7 @@ genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './r
 <p>逐策略呼叫runStrategy(withSummary:false)，各單附加策略sid後合併並依timeStart排序
 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
 個別策略執行失敗(如時間點無參數無法下單)時強制略過</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -3241,7 +3770,7 @@ console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
 僅於全部conds序列皆有值之共同時間點判斷觸發
 strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數時reject</p>
-<p>Unit Test: <a href="https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs">Github</a></p></li></ul></dd>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
@@ -3689,7 +4218,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 23:14:52 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Aug 02 2026 20:09:43 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
