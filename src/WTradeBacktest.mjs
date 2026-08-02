@@ -7,6 +7,7 @@ import calcOrdersSummarySimple from './calcOrdersSummarySimple.mjs'
 import calcSummary from './calcSummary.mjs'
 import closeAndSummaryOrders from './closeAndSummaryOrders.mjs'
 import genReport from './genReport.mjs'
+import genReportCore from './genReportCore.mjs'
 
 
 let r = {
@@ -19,6 +20,7 @@ let r = {
     calcSummary,
     closeAndSummaryOrders,
     genReport,
+    genReportCore,
 }
 
 

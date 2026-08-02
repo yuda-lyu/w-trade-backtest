@@ -1,28 +1,28 @@
-# w-data-tdbacktest
+# w-trade-backtest
 A tool for trade backtest.
 
 ![language](https://img.shields.io/badge/language-JavaScript-orange.svg) 
-[![npm version](http://img.shields.io/npm/v/w-data-tdbacktest.svg?style=flat)](https://npmjs.org/package/w-data-tdbacktest) 
-[![license](https://img.shields.io/npm/l/w-data-tdbacktest.svg?style=flat)](https://npmjs.org/package/w-data-tdbacktest) 
-[![npm download](https://img.shields.io/npm/dt/w-data-tdbacktest.svg)](https://npmjs.org/package/w-data-tdbacktest) 
-[![npm download](https://img.shields.io/npm/dm/w-data-tdbacktest.svg)](https://npmjs.org/package/w-data-tdbacktest) 
-[![jsdelivr download](https://img.shields.io/jsdelivr/npm/hm/w-data-tdbacktest.svg)](https://www.jsdelivr.com/package/npm/w-data-tdbacktest)
+[![npm version](http://img.shields.io/npm/v/w-trade-backtest.svg?style=flat)](https://npmjs.org/package/w-trade-backtest) 
+[![license](https://img.shields.io/npm/l/w-trade-backtest.svg?style=flat)](https://npmjs.org/package/w-trade-backtest) 
+[![npm download](https://img.shields.io/npm/dt/w-trade-backtest.svg)](https://npmjs.org/package/w-trade-backtest) 
+[![npm download](https://img.shields.io/npm/dm/w-trade-backtest.svg)](https://npmjs.org/package/w-trade-backtest) 
+[![jsdelivr download](https://img.shields.io/jsdelivr/npm/hm/w-trade-backtest.svg)](https://www.jsdelivr.com/package/npm/w-trade-backtest)
 
 ## Documentation
-To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-data-tdbacktest/global.html).
+To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-trade-backtest/global.html).
 
 ## Installation
 
 ### Using npm(ES6 module):
 ```alias
-npm i w-data-tdbacktest
+npm i w-trade-backtest
 ```
 
 #### Example:
-> **Link:** [[dev source code](https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/g.mjs)]
+> **Link:** [[dev source code](https://github.com/yuda-lyu/w-trade-backtest/blob/master/g.mjs)]
 ```alias
-import WDataTdbacktest from 'w-data-tdbacktest'
-import ott from 'w-data-tdbacktest/src/ott.mjs' //時區時間函數由外部傳入, 可用src/ott.mjs或自行以dayjs包裝
+import WTradeBacktest from 'w-trade-backtest'
+import ott from 'w-trade-backtest/src/ott.mjs' //時區時間函數由外部傳入, 可用src/ott.mjs或自行以dayjs包裝
 
 
 async function test() {
@@ -75,7 +75,7 @@ async function test() {
     }
 
     //runStrategy, 執行單一策略回測
-    let r = await WDataTdbacktest.runStrategy(ott, strategy, funGetSeries)
+    let r = await WTradeBacktest.runStrategy(ott, strategy, funGetSeries)
     console.log('runStrategy orders:', r.orders.map((o) => `${o.timeStart} ${o.mode} ${o.priceStart}->${o.priceEnd} ${o.modeResult}`))
     // => runStrategy orders: [
     //   '2020-01-01T00:00:00 long 100->105 profit',
@@ -99,7 +99,7 @@ async function test() {
         { sid: 's1', ...strategy },
         { sid: 's2', ...strategy, mode: 'short', conds: [{ key: 'sig', sym: '<', th: 0.5, opr: 'and' }] },
     ]
-    let rr = await WDataTdbacktest.runStrategies(ott, strategies, funGetSeries)
+    let rr = await WTradeBacktest.runStrategies(ott, strategies, funGetSeries)
     console.log('runStrategies orders:', rr.orders.map((o) => `${o.sid} ${o.timeStart} ${o.mode} ${o.modeResult || 'unsettled'}`))
     // => runStrategies orders: [
     //   's1 2020-01-01T00:00:00 long profit',
@@ -141,12 +141,12 @@ async function test() {
             uFee: 0.05,
         },
     ]
-    let ordersClose = await WDataTdbacktest.calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
+    let ordersClose = await WTradeBacktest.calcOrders(arrOhlc, ordersSubmit, { uIni: 1000 })
     console.log('calcOrders:', ordersClose.map((o) => `${o.timeStart}->${o.timeEnd} ${o.modeResult} uProfitOrLoss=${o.uProfitOrLoss}`))
     // => calcOrders: [ '2020-01-01T00:00:00->2020-01-01T04:00:00 profit uProfitOrLoss=4.9' ]
 
     //calcSummary, 基於全部交易單重算累積收益並統計摘要
-    let summary = await WDataTdbacktest.calcSummary(ott, 1000, ordersClose, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
+    let summary = await WTradeBacktest.calcSummary(ott, 1000, ordersClose, '2020-01-01T00:00:00', '2020-01-01T20:00:00')
     console.log('calcSummary:', {
         numTrade: summary.numTrade,
         rWin: summary.rWin,
@@ -154,10 +154,10 @@ async function test() {
     })
     // => calcSummary: { numTrade: 1, rWin: '100.00%', uEquityFinal: 1004.9 }
 
-    //genReport, 產出html報告(內含權益曲線, 訂單表格, 時間軸與摘要)
-    WDataTdbacktest.genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './test/tmp-g/report.html')
-    console.log('genReport: ./test/tmp-g/report.html')
-    // => genReport: ./test/tmp-g/report.html
+    //genReportCore, 產出html報告(內含權益曲線, 訂單表格, 時間軸與摘要)
+    WTradeBacktest.genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './test/tmp-g/report.html')
+    console.log('genReportCore: ./test/tmp-g/report.html')
+    // => genReportCore: ./test/tmp-g/report.html
 
 }
 test()

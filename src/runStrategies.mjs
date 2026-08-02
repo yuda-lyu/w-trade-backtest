@@ -17,7 +17,7 @@ import calcSummary from './calcSummary.mjs'
  * 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
  * 個別策略執行失敗(如時間點無參數無法下單)時強制略過
  *
- * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {Array} strategies 輸入策略陣列，各元素需含sid與runStrategy之strategy欄位

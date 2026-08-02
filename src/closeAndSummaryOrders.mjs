@@ -10,7 +10,7 @@ import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
 import writeJson from './writeJson.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcSummary from './calcSummary.mjs'
-import genReport from './genReport.mjs'
+import genReportCore from './genReportCore.mjs'
 
 
 /**
@@ -20,7 +20,7 @@ import genReport from './genReport.mjs'
  * 經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
  * fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject
  *
- * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {String} fdOhlc 輸入儲存K線(ohlc)序列資料夾字串，各序列以`${key}.json`儲存
@@ -182,8 +182,8 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
         //fpHtml
         let fpHtml = path.resolve(fdTest, fnHtml)
 
-        //genReport
-        genReport(r, fpHtml)
+        //genReportCore
+        genReportCore(r, fpHtml)
 
     }
 

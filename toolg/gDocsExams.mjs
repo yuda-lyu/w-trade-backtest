@@ -15,7 +15,7 @@ function main() {
     let pks = getPks()
 
     //url
-    let url = `https://cdn.jsdelivr.net/npm/w-data-tdbacktest@${pks.version}/dist/w-data-tdbacktest.umd.js`
+    let url = `https://cdn.jsdelivr.net/npm/w-trade-backtest@${pks.version}/dist/w-trade-backtest.umd.js`
 
     //mkdirSync
     if (!fs.existsSync(fdTar)) {
@@ -35,7 +35,7 @@ function main() {
 
         //replace
         let r
-        r = `../dist/w-data-tdbacktest.umd.js`
+        r = `../dist/w-trade-backtest.umd.js`
         c = c.replace(r, url)
 
         //write

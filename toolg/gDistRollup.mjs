@@ -10,7 +10,7 @@ let fdTar = './dist'
 async function rp() {
 
     await rollupFiles({ //rollupFiles預設會clean folder
-        fns: 'WDataTdbacktest.mjs',
+        fns: 'WTradeBacktest.mjs',
         fdSrc,
         fdTar,
         nameDistType: 'kebabCase',
@@ -31,7 +31,7 @@ async function rp() {
             console.log(err)
         })
 
-    //genReport於執行期以fs讀取同資料夾之模板資產(js與html不打包進bundle), 故須複製至dist
+    //genReportCore於執行期以fs讀取同資料夾之模板資產(js與html不打包進bundle), 故須複製至dist
     let fnsAssets = [
         'tmp.html',
         'renderProfitPlot.js',

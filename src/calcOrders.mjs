@@ -12,7 +12,7 @@ import haskey from 'wsemi/src/haskey.mjs'
  * long盈虧為uTrade*(priceEnd/priceStart)-uTrade-2*uFee，short盈虧為(priceStart-priceEnd)*(uTrade/priceStart)-2*uFee
  * 依timeStart排序逐單累計uCumuProfitOrLoss與uEquity(自uIni起算)，modeResult為盈虧<0時'loss'否則'profit'，未觸發止盈止損者維持原單(未平倉)
  *
- * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Array} arrOhlc 輸入K線陣列，各元素需含time、High、Low欄位
  * @param {Array} orders 輸入下單陣列，各元素需含mode('long'或'short')、timeStart、priceStart、uTrade、priceTakeProfit、priceStopLoss、uFee欄位

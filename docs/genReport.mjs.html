@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
     
 </nav>
 
@@ -46,57 +46,125 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>import path from 'path'
-import fs from 'fs'
-import { fileURLToPath } from 'url'
-import writeTxt from './writeTxt.mjs'
+import _ from 'lodash-es'
+import w from 'wsemi'
+import calcSummary from './calcSummary.mjs'
+import genReportCore from './genReportCore.mjs'
+import readJson from './readJson.mjs'
+import writeJson from './writeJson.mjs'
 
-
-//模板資產(tmp.html, render*.js)與本模組同資料夾, 以模組位置解析, 不依賴 cwd
-let fd = path.dirname(fileURLToPath(import.meta.url))
 
 /**
- * 產出html回測報告
+ * 由orders.json產製績效html報表
  *
- * 讀取與本模組同資料夾之模板資產(tmp.html與render*.js)，置換{name}、{orders}、{summary}後寫出html
- * 報告內含權益曲線、訂單表格、時間軸與摘要
+ * 讀取orders.json(已結算訂單陣列)後，經calcSummary統計摘要，再以genReportCore產出html報表
+ * 訂單須為已結算形(含uProfitOrLoss、uEquity等欄位)，未結算單(timeEnd為空)仍可計算，計入summary.numTradeUnsettled
+ * fpOrders非有效字串或非檔案、內容非有效陣列時throw
  *
- * Unit Test: {@link https://github.com/yuda-lyu/w-data-tdbacktest/blob/master/test/unit-WDataTdbacktest.test.mjs Github}
+ * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
- * @param {Object} r 輸入報告物件，需含name(報告名稱字串)、orders(訂單陣列)、summary(摘要物件)欄位
- * @param {String} fpOut 輸入輸出html檔案路徑字串
- * @returns {undefined} 無回傳，於fpOut寫出html報告
+ * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
+ * @param {String} fpOrders 輸入orders.json檔案路徑字串
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {String} [opt.fpOut=''] 輸入輸出html檔案路徑字串，預設為與orders.json同資料夾之report.html
+ * @param {String} [opt.name=''] 輸入報表標題字串，預設為orders.json所在資料夾名
+ * @param {Number} [opt.uIni=null] 輸入初始資金數值，預設由首筆已結算單推回(uEquity - uCumuProfitOrLoss)，推不出則為1000
+ * @param {String} [opt.timeOhlcStart=''] 輸入摘要統計起始秒時間字串，影響btDays與年化，預設由訂單最早timeStart推得，注意訂單起訖僅為「有單的範圍」，若實際回測窗較寬(頭尾無單)年化會被高估，建議明給
+ * @param {String} [opt.timeOhlcEnd=''] 輸入摘要統計結束秒時間字串，預設由訂單最晚timeEnd(未平倉單取timeStart)推得
+ * @param {Boolean} [opt.withWriteSummary=false] 輸入是否同時輸出summary.json(與fpOut同資料夾)布林值，預設false
+ * @returns {Promise} 回傳Promise，resolve為物件，內含orders(訂單陣列)、summary(摘要物件)、fpOut(輸出html路徑)欄位
  * @example
  *
- * //rr為runStrategies範例之回傳{orders,summary}
- * genReport({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './report.html')
- * // => 於'./report.html'寫出html報告
+ * import fs from 'fs'
+ *
+ * //orders為已結算訂單陣列(如runStrategy、runStrategies或closeAndSummaryOrders產出)
+ * let orders = [{
+ *     mode: 'long',
+ *     timeStart: '2020-01-01T00:00:00',
+ *     priceStart: 100,
+ *     uTrade: 100,
+ *     priceTakeProfit: 105,
+ *     priceStopLoss: 97,
+ *     timeEnd: '2020-01-01T04:00:00',
+ *     priceEnd: 105,
+ *     modeResult: 'profit',
+ *     uFee: 0.05,
+ *     uProfitOrLoss: 4.9,
+ *     rProfitOrLoss: 0.049,
+ *     uCumuProfitOrLoss: 4.9,
+ *     uEquity: 1004.9,
+ * }]
+ *
+ * fs.mkdirSync('./result', { recursive: true })
+ * fs.writeFileSync('./result/orders.json', JSON.stringify(orders), 'utf8')
+ *
+ * let r = await genReport(ott, './result/orders.json', { name: '示範策略', uIni: 1000 })
+ * console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
+ * // => 1 100.00% 1004.9
+ * console.log(fs.readdirSync('./result'))
+ * // => [ 'orders.json', 'report.html' ]
  *
  */
-let genReport = (r, fpOut) => {
+let genReport = async (ott, fpOrders, opt = {}) => {
 
-    let rd = (fn) => {
-        let fp = path.resolve(fd, fn)
-        let h = fs.readFileSync(fp, 'utf8')
-        return h
+    //check
+    if (!w.isestr(fpOrders)) {
+        throw new Error(`invalid fpOrders`)
+    }
+    if (!w.fsIsFile(fpOrders)) {
+        throw new Error(`fpOrders[${fpOrders}] is not a file`)
     }
 
-    let h = rd('tmp.html')
-    let hPlot = rd('renderProfitPlot.js')
-    let hTable = rd('renderOrdersTable.js')
-    let hTimeline = rd('renderOrdersTimeline.js')
-    let hSummary = rd('renderSummary.js')
+    //orders
+    let orders = readJson(fpOrders)
+    if (!w.isearr(orders)) {
+        throw new Error(`orders in fpOrders[${fpOrders}] is not an effective array`)
+    }
 
-    h = h.replace(`{renderProfitPlot}`, hPlot)
-    h = h.replace(`{renderOrdersTable}`, hTable)
-    h = h.replace(`{renderOrdersTimeline}`, hTimeline)
-    h = h.replace(`{renderSummary}`, hSummary)
-    h = h.replace(`{name}`, r.name)
-    h = h.replace(`{orders}`, JSON.stringify(r.orders))
-    h = h.replace(`{summary}`, JSON.stringify(r.summary))
+    //fpOut
+    let fpOut = _.get(opt, 'fpOut', '')
+    if (!w.isestr(fpOut)) {
+        fpOut = path.resolve(path.dirname(fpOrders), 'report.html')
+    }
 
-    //writeTxt
-    writeTxt(fpOut, h)
+    //name
+    let name = _.get(opt, 'name', '')
+    if (!w.isestr(name)) {
+        name = path.basename(path.dirname(path.resolve(fpOrders)))
+    }
 
+    //uIni, 未給則由首筆已結算單推回(calcOrders 定義 uEquity = uIni + uCumuProfitOrLoss)
+    let uIni = _.get(opt, 'uIni', null)
+    if (!w.isnum(uIni)) {
+        let o = _.find(orders, (o) => w.isnum(o.uEquity) &amp;&amp; w.isnum(o.uCumuProfitOrLoss))
+        uIni = o ? o.uEquity - o.uCumuProfitOrLoss : 1000
+    }
+
+    //timeOhlcStart, timeOhlcEnd, 未給則由訂單起訖推得
+    let timeOhlcStart = _.get(opt, 'timeOhlcStart', '')
+    if (!w.isestr(timeOhlcStart)) {
+        timeOhlcStart = _.min(_.map(orders, 'timeStart'))
+    }
+    let timeOhlcEnd = _.get(opt, 'timeOhlcEnd', '')
+    if (!w.isestr(timeOhlcEnd)) {
+        timeOhlcEnd = _.max(_.map(orders, (o) => w.isestr(o.timeEnd) ? o.timeEnd : o.timeStart))
+    }
+
+    //withWriteSummary
+    let withWriteSummary = _.get(opt, 'withWriteSummary', false)
+
+    //calcSummary
+    let summary = await calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd)
+
+    //writeJson
+    if (withWriteSummary) {
+        writeJson(path.resolve(path.dirname(fpOut), 'summary.json'), { name, summary }, { structured: true })
+    }
+
+    //genReportCore
+    genReportCore({ name, orders, summary }, fpOut)
+
+    return { orders, summary, fpOut }
 }
 
 
@@ -115,7 +183,7 @@ export default genReport
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 01 2026 23:14:52 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Aug 02 2026 20:09:43 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

@@ -1,7 +1,7 @@
 {
-  "name": "w-data-tdbacktest",
-  "version": "1.0.2",
-  "main": "dist/w-data-tdbacktest.umd.js",
+  "name": "w-trade-backtest",
+  "version": "1.0.3",
+  "main": "dist/w-trade-backtest.umd.js",
   "dependencies": {
     "dayjs": "^1.11.21",
     "lodash-es": "^4.18.1",
@@ -9,7 +9,6 @@
     "wsemi": "^1.8.67"
   },
   "devDependencies": {
-    "mocha": "^11.7.6",
     "w-package-tools": "^1.1.12"
   },
   "scripts": {
@@ -18,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yuda-lyu/w-data-tdbacktest.git"
+    "url": "git+https://github.com/yuda-lyu/w-trade-backtest.git"
   },
   "keywords": [
     "package",

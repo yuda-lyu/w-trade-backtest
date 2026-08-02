@@ -8,6 +8,7 @@ import calcOrdersSummarySimple from '../src/calcOrdersSummarySimple.mjs'
 import calcSummary from '../src/calcSummary.mjs'
 import closeAndSummaryOrders from '../src/closeAndSummaryOrders.mjs'
 import genReport from '../src/genReport.mjs'
+import genReportCore from '../src/genReportCore.mjs'
 import ott, { nowTpeStr } from '../src/ott.mjs'
 import runStrategies from '../src/runStrategies.mjs'
 import runStrategy from '../src/runStrategy.mjs'
@@ -16,7 +17,7 @@ import writeTxt from '../src/writeTxt.mjs'
 
 
 //規格來源: src/calcOrders.mjs, src/calcOrdersRatio.mjs, src/calcOrdersSummary.mjs, src/calcOrdersSummarySimple.mjs,
-//         src/calcSummary.mjs, src/runStrategy.mjs, src/runStrategies.mjs, src/genReport.mjs, src/closeAndSummaryOrders.mjs
+//         src/calcSummary.mjs, src/runStrategy.mjs, src/runStrategies.mjs, src/genReportCore.mjs, src/closeAndSummaryOrders.mjs
 //  calcOrders(arrOhlc, orders, {uIni}): 依timeStart排序逐單結算, long以Low<=priceStopLoss先判止損, High>=priceTakeProfit判止盈;
 //    short以High>=priceStopLoss先判止損, Low<=priceTakeProfit判止盈; 僅檢查time>timeStart之K棒;
 //    long盈虧 = uTrade*(priceEnd/priceStart) - uTrade - 2*uFee; short盈虧 = (priceStart-priceEnd)*(uTrade/priceStart) - 2*uFee;
@@ -27,7 +28,10 @@ import writeTxt from '../src/writeTxt.mjs'
 //  calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd): 重算累積收益後執行ratio+summary, 另附timeTest/timeOhlcStart/timeOhlcEnd/uIni
 //  runStrategy(ott, strategy, funGetSeries, opt): 依conds(sym/th/opr)於各時間點判斷觸發下單, 以settings計算止盈止損價格, 再走calcOrders+summary
 //  runStrategies(ott, strategies, funGetSeries, opt): 逐策略執行(withSummary:false), 合併orders附sid, 以uIni總和跑calcSummary
-//  genReport(r, fpOut): 讀取src內tmp.html與render*.js模板, 置換{name}/{orders}/{summary}後寫出html
+//  genReportCore(r, fpOut): 讀取src內tmp.html與render*.js模板, 置換{name}/{orders}/{summary}後寫出html
+//  genReport(ott, fpOrders, opt): 讀orders.json後calcSummary+genReportCore產出html, 回傳{orders,summary,fpOut};
+//    opt.fpOut預設同資料夾report.html, opt.name預設所在資料夾名, opt.uIni預設由首筆已結算單推回(uEquity-uCumuProfitOrLoss),
+//    opt.timeOhlcStart/timeOhlcEnd預設由訂單起訖推得, opt.withWriteSummary:true另輸出summary.json
 //  closeAndSummaryOrders(ott, fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt):
 //    以w-data-tdprovide讀取fdOhlc/fdParam數據, 結算ordersSubmit並輸出orders.json/summary.json/report.html至fdTest
 
@@ -83,10 +87,10 @@ let buildOrders = () => {
 }
 
 //暫存根資料夾: 各測試檔獨立使用./test/tmp-{測試名}, 結束時整夾刪除, 不與其他測試檔共用父層
-let fdTmp = path.resolve('./test/tmp-unit-WDataTdbacktest')
+let fdTmp = path.resolve('./test/tmp-unit-WTradeBacktest')
 
 
-describe('WDataTdbacktest', function() {
+describe('WTradeBacktest', function() {
 
     after(function() {
         fs.rmSync(fdTmp, { recursive: true, force: true })
@@ -360,20 +364,111 @@ describe('WDataTdbacktest', function() {
 
     })
 
-    describe('genReport', function() {
+    describe('genReportCore', function() {
 
         it('置換模板{name}/{orders}/{summary}後寫出html', async function() {
             let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
             orders = calcOrdersRatio(ott, orders)
             let summary = calcOrdersSummary(ott, 1000, orders, t00, t20)
             let fpOut = path.resolve(fdTmp, 'report.html')
-            genReport({ name: '單元測試報告', orders, summary }, fpOut)
+            genReportCore({ name: '單元測試報告', orders, summary }, fpOut)
             assert.ok(fs.existsSync(fpOut))
             let h = fs.readFileSync(fpOut, 'utf8')
             assert.ok(h.includes('單元測試報告'))
             assert.ok(!h.includes('{orders}'))
             assert.ok(!h.includes('{summary}'))
             assert.ok(h.includes(t00)) //orders已注入
+        })
+
+    })
+
+    describe('genReport', function() {
+
+        //writeSettledOrders: 將已結算訂單寫至`${fdTmp}/${fd}/orders.json`並回傳其路徑
+        let writeSettledOrders = async (fd) => {
+            let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
+            let fpOrders = path.resolve(fdTmp, fd, 'orders.json')
+            writeJson(fpOrders, orders)
+            return fpOrders
+        }
+
+        it('預設輸出同資料夾report.html, name取所在資料夾名, uIni由首筆已結算單推回', async function() {
+            let fpOrders = await writeSettledOrders('gr-default')
+
+            let r = await genReport(ott, fpOrders)
+
+            //fpOut
+            assert.strictEqual(r.fpOut, path.resolve(fdTmp, 'gr-default', 'report.html'))
+            assert.ok(fs.existsSync(r.fpOut))
+
+            //orders
+            assert.strictEqual(r.orders.length, 4)
+
+            //summary, uIni由首筆已結算單推回(1004.9-4.9=1000), 統計區間由訂單起訖推得(t00至未平倉D單之timeStart=t16)
+            assert.strictEqual(r.summary.uIni, 1000)
+            assert.strictEqual(r.summary.timeOhlcStart, t00)
+            assert.strictEqual(r.summary.timeOhlcEnd, t16)
+            assert.strictEqual(r.summary.numTrade, 4)
+            assert.strictEqual(r.summary.numTradeUnsettled, 1)
+            assert.strictEqual(r.summary.rWin, '66.67%')
+            assert.ok(approx(r.summary.uEquityFinal, 1006.7), `uEquityFinal=${r.summary.uEquityFinal}`)
+
+            //html已置換name與orders
+            let h = fs.readFileSync(r.fpOut, 'utf8')
+            assert.ok(h.includes('gr-default'))
+            assert.ok(!h.includes('{orders}'))
+            assert.ok(!h.includes('{summary}'))
+        })
+
+        it('opt指定fpOut/name/uIni/timeOhlcStart/timeOhlcEnd, withWriteSummary另輸出summary.json', async function() {
+            let fpOrders = await writeSettledOrders('gr-opt')
+            let fpOut = path.resolve(fdTmp, 'gr-opt-out', 'rpt.html')
+
+            let r = await genReport(ott, fpOrders, {
+                fpOut,
+                name: '指定報表名',
+                uIni: 2000,
+                timeOhlcStart: t00,
+                timeOhlcEnd: t20,
+                withWriteSummary: true,
+            })
+
+            //fpOut
+            assert.strictEqual(r.fpOut, fpOut)
+            assert.ok(fs.existsSync(fpOut))
+            assert.ok(fs.readFileSync(fpOut, 'utf8').includes('指定報表名'))
+
+            //summary
+            assert.strictEqual(r.summary.uIni, 2000)
+            assert.strictEqual(r.summary.timeOhlcStart, t00)
+            assert.strictEqual(r.summary.timeOhlcEnd, t20)
+
+            //summary.json, 與fpOut同資料夾, 內含name與summary
+            let fpSummary = path.resolve(fdTmp, 'gr-opt-out', 'summary.json')
+            let stsm = JSON.parse(fs.readFileSync(fpSummary, 'utf8'))
+            assert.strictEqual(stsm.name, '指定報表名')
+            assert.strictEqual(stsm.summary.numTrade, 4)
+        })
+
+        it('withWriteSummary預設false, 不輸出summary.json', async function() {
+            let fpOrders = await writeSettledOrders('gr-nosummary')
+            await genReport(ott, fpOrders)
+            assert.ok(!fs.existsSync(path.resolve(fdTmp, 'gr-nosummary', 'summary.json')))
+        })
+
+        it('fpOrders非有效字串時reject', async function() {
+            await assert.rejects(genReport(ott, ''), { message: `invalid fpOrders` })
+        })
+
+        it('fpOrders非檔案時reject', async function() {
+            let fp = path.resolve(fdTmp, 'gr-none', 'orders.json')
+            await assert.rejects(genReport(ott, fp), { message: `fpOrders[${fp}] is not a file` })
+        })
+
+        it('orders.json內容非有效陣列時reject', async function() {
+            let fp = path.resolve(fdTmp, 'gr-invalid', 'orders.json')
+            writeJson(fp, [])
+            await assert.rejects(genReport(ott, fp), { message: `orders in fpOrders[${fp}] is not an effective array` })
         })
 
     })
