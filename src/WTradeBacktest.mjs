@@ -1,5 +1,6 @@
 import runStrategy from './runStrategy.mjs'
 import runStrategies from './runStrategies.mjs'
+import runStrategiesAndBacktest from './runStrategiesAndBacktest.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcOrdersRatio from './calcOrdersRatio.mjs'
 import calcOrdersSummary from './calcOrdersSummary.mjs'
@@ -13,6 +14,7 @@ import genReportCore from './genReportCore.mjs'
 let r = {
     runStrategy,
     runStrategies,
+    runStrategiesAndBacktest,
     calcOrders,
     calcOrdersRatio,
     calcOrdersSummary,
