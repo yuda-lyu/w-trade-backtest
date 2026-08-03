@@ -1,6 +1,6 @@
 {
   "name": "w-trade-backtest",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "dist/w-trade-backtest.umd.js",
   "dependencies": {
     "dayjs": "^1.11.21",

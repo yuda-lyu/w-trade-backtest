@@ -9,6 +9,9 @@ import calcSummary from './calcSummary.mjs'
 import closeAndSummaryOrders from './closeAndSummaryOrders.mjs'
 import genReport from './genReport.mjs'
 import genReportCore from './genReportCore.mjs'
+import genKLinesTpSl from './genKLinesTpSl.mjs'
+import buildKLinesTpSl from './buildKLinesTpSl.mjs'
+import loadKLinesTpSl from './loadKLinesTpSl.mjs'
 
 
 let r = {
@@ -23,6 +26,9 @@ let r = {
     closeAndSummaryOrders,
     genReport,
     genReportCore,
+    genKLinesTpSl,
+    buildKLinesTpSl,
+    loadKLinesTpSl,
 }
 
 
