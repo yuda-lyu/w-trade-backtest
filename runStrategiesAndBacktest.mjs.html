@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>closeAndSummaryOrders.mjs - Documentation</title>
+    <title>runStrategiesAndBacktest.mjs - Documentation</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -35,7 +35,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">closeAndSummaryOrders.mjs</h1>
+    <h1 class="page-title">runStrategiesAndBacktest.mjs</h1>
     
 
     
@@ -48,41 +48,35 @@
             <pre class="prettyprint source linenums"><code>import path from 'path'
 import get from 'lodash-es/get.js'
 import size from 'lodash-es/size.js'
-import ispnum from 'wsemi/src/ispnum.mjs'
-import isestr from 'wsemi/src/isestr.mjs'
-import isarr from 'wsemi/src/isarr.mjs'
-import cint from 'wsemi/src/cint.mjs'
+import isearr from 'wsemi/src/isearr.mjs'
 import fsIsFolder from 'wsemi/src/fsIsFolder.mjs'
 import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
-import writeJson from './writeJson.mjs'
-import calcOrders from './calcOrders.mjs'
-import calcSummary from './calcSummary.mjs'
+import runStrategies from './runStrategies.mjs'
 import genReportCore from './genReportCore.mjs'
+import writeJson from './writeJson.mjs'
 
 
 /**
- * 結算下單清單並輸出訂單、摘要與報告檔案
+ * 執行多策略回測並輸出訂單、摘要與報告檔案
  *
- * 以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，依timeOhlcStart至timeOhlcEnd範圍取keyOhlc之K線序列
- * 經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
- * fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject
+ * 以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，建立timeStart至timeEnd範圍之序列查詢函數後執行runStrategies
+ * 合併結果命名為'全部策略'，並輸出orders.json、summary.json、report.html至fdTest資料夾
+ * fdOhlc或fdParam非資料夾、strategies非有效陣列時throw
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
  * @param {String} fdOhlc 輸入儲存K線(ohlc)序列資料夾字串，各序列以`${key}.json`儲存
  * @param {String} fdParam 輸入儲存指標參數序列資料夾字串
- * @param {Number} uIni 輸入初始資金正數
- * @param {String} timeOhlcStart 輸入回測起始秒時間字串
- * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
- * @param {String} keyOhlc 輸入K線序列key字串
- * @param {Array} ordersSubmit 輸入下單陣列(格式同calcOrders之orders)
+ * @param {Array} strategies 輸入策略陣列，各元素需含sid與runStrategy之strategy欄位
+ * @param {String} timeStart 輸入回測起始秒時間字串
+ * @param {String} timeEnd 輸入回測結束秒時間字串
  * @param {String} fdTest 輸入輸出結果資料夾字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Boolean} [opt.writeOrders=true] 輸入是否輸出orders.json布林值，預設true
  * @param {Boolean} [opt.writeSummary=true] 輸入是否輸出summary.json布林值，預設true
  * @param {Boolean} [opt.writeReport=true] 輸入是否輸出report.html布林值，預設true
- * @returns {Promise} 回傳Promise，無resolve值，於fdTest輸出結果檔案
+ * @returns {Promise} 回傳Promise，resolve為{name,orders,summary}物件，另於fdTest輸出結果檔案
  * @example
  *
  * import fs from 'fs'
@@ -96,30 +90,35 @@ import genReportCore from './genReportCore.mjs'
  *     { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
  * ]
  *
+ * let arrSig = [
+ *     { time: '2020-01-01T00:00:00', param: 1 },
+ *     { time: '2020-01-01T04:00:00', param: 0 },
+ *     { time: '2020-01-01T08:00:00', param: 1 },
+ *     { time: '2020-01-01T12:00:00', param: 0 },
+ *     { time: '2020-01-01T16:00:00', param: 0 },
+ *     { time: '2020-01-01T20:00:00', param: 0 },
+ * ]
+ *
  * //建立數據資料夾, fdOhlc放K線序列, fdParam放指標參數序列
  * fs.mkdirSync('./data-ohlc', { recursive: true })
  * fs.mkdirSync('./data-param', { recursive: true })
  * fs.writeFileSync('./data-ohlc/btc.json', JSON.stringify(arrOhlc), 'utf8')
+ * fs.writeFileSync('./data-param/sig.json', JSON.stringify(arrSig), 'utf8')
  *
- * let ordersSubmit = [{
- *     mode: 'long',
- *     timeStart: '2020-01-01T00:00:00',
- *     priceStart: 100,
- *     uTrade: 100,
- *     priceTakeProfit: 105,
- *     priceStopLoss: 97,
- *     timeEnd: '',
- *     priceEnd: '',
- *     modeResult: '',
- *     uFee: 0.05,
- * }]
+ * let settings = { uIni: 1000, uTrade: 100, rTakeProfit: 0.05, rStopLoss: 0.03, rFee: 0.0005 }
+ * let strategies = [
+ *     { sid: 's1', mode: 'long', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '>', th: 0.5, opr: 'and' }], settings },
+ *     { sid: 's2', mode: 'short', keyOhlc: 'btc', conds: [{ key: 'sig', sym: '&lt;', th: 0.5, opr: 'and' }], settings },
+ * ]
  *
- * await closeAndSummaryOrders(ott, './data-ohlc', './data-param', 1000, '2020-01-01T00:00:00', '2020-01-01T20:00:00', 'btc', ordersSubmit, './result')
+ * let r = await runStrategiesAndBacktest(ott, './data-ohlc', './data-param', strategies, '2020-01-01T00:00:00', '2020-01-01T20:00:00', './result')
+ * console.log(r.name, r.summary.uIni, r.summary.numTrade, r.summary.rWin)
+ * // => 全部策略 2000 6 40.00%
  * console.log(fs.readdirSync('./result'))
  * // => [ 'orders.json', 'report.html', 'summary.json' ]
  *
  */
-let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, timeOhlcEnd, keyOhlc, ordersSubmit, fdTest, opt = {}) => {
+let runStrategiesAndBacktest = async (ott, fdOhlc, fdParam, strategies, timeStart, timeEnd, fdTest, opt = {}) => {
 
     if (!fsIsFolder(fdOhlc)) {
         throw new Error(`fdOhlc[${fdOhlc}] is not a forder`)
@@ -127,65 +126,24 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
     if (!fsIsFolder(fdParam)) {
         throw new Error(`fdParam[${fdParam}] is not a forder`)
     }
-    if (!ispnum(uIni)) {
-        throw new Error(`uIni[${uIni}] is not a positive number`)
-    }
-    if (!isestr(timeOhlcStart)) {
-        throw new Error(`invalid timeOhlcStart[${timeOhlcStart}]`)
-    }
-    if (!isestr(timeOhlcEnd)) {
-        throw new Error(`invalid timeOhlcEnd[${timeOhlcEnd}]`)
-    }
-    if (!isestr(keyOhlc)) {
-        throw new Error(`invalid keyOhlc[${keyOhlc}]`)
-    }
-    if (!isarr(ordersSubmit)) {
-        throw new Error(`invalid ordersSubmit[${ordersSubmit}]`)
-    }
-    if (!isestr(fdTest)) {
-        throw new Error(`invalid fdTest[${fdTest}]`)
+    //check
+    if (!isearr(strategies)) {
+        throw new Error(`invalid strategies`)
     }
 
     let writeOrders = get(opt, 'writeOrders', true)
     let writeSummary = get(opt, 'writeSummary', true)
     let writeReport = get(opt, 'writeReport', true)
 
+    //wdp
     let wdp = WDataTdprovide(fdOhlc, fdParam)
 
-    //td
-    let ts = ott(timeOhlcStart)
-    let te = ott(timeOhlcEnd)
-    let td = te.diff(ts, 'hour')
-    // console.log('td', td)
-
-    //m
-    let m = td / 4
-    if (m !== cint(m)) {
-        throw new Error(`timeOhlcStart[${timeOhlcStart}] to timeOhlcEnd[${timeOhlcEnd}] are not hour intervals`)
-    }
-    // console.log('m', m)
-
     //funGetSeries
-    let funGetSeries = await wdp.buildGetTimeSeriesByTimeRange(timeOhlcStart, timeOhlcEnd)
+    let funGetSeries = await wdp.buildGetTimeSeriesByTimeRange(timeStart, timeEnd)
 
-    //arrOhlc
-    let arrOhlc = await funGetSeries(keyOhlc)
-    // console.log('arrOhlc', arrOhlc, last(arrOhlc))
-
-    //ordersClose
-    let ordersClose = await calcOrders(arrOhlc, ordersSubmit, { uIni })
-    // console.log('ordersClose', ordersClose)
-
-    //summary
-    let summary = await calcSummary(ott, uIni, ordersClose, timeOhlcStart, timeOhlcEnd)
-    console.log('summary', summary, size(ordersClose))
-
-    //r
-    let r = {
-        name: `全部策略`,
-        orders: ordersClose,
-        summary,
-    }
+    //runStrategies
+    let r = await runStrategies(ott, strategies, funGetSeries, {})
+    r.name = `全部策略`
 
     if (writeOrders) {
 
@@ -229,15 +187,16 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
         //fpHtml
         let fpHtml = path.resolve(fdTest, fnHtml)
 
-        //genReportCore
+        //genReport
         genReportCore(r, fpHtml)
 
     }
 
+    return r
 }
 
 
-export default closeAndSummaryOrders
+export default runStrategiesAndBacktest
 </code></pre>
         </article>
     </section>
