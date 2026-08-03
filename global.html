@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
     
 </nav>
 
@@ -124,6 +124,556 @@
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="buildKLinesTpSl"><span class="type-signature type-signature-async">(async) </span>buildKLinesTpSl<span class="signature">(fdOhlc, fdParam, fpJson, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>建置各K線與各止盈止損組合之先觸結果快取檔</p>
+<p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾內keyOhlc序列，取ts至te範圍K線後，逐一組合modes與tps呼叫genKLinesTpSl
+各組合以<code>${mode}_${tpsl}</code>為key存入各根K線，win為1(止盈先觸)、0(止損先觸)或-1(至區間末仍未結)
+timeEnd於建置時由hold位移換算為絕對時間，故下游查表即得而不需位置索引，未結者為null
+僅存win、timeEnd與各根close，盈虧由下游loadKLinesTpSl之ordersFromBars以close與手續費重算
+fdOhlc或fdParam非資料夾、fpJson或opt.keyOhlc非有效字串、opt.ts或opt.te非時間字串時throw</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="buildKLinesTpSl.mjs.html">buildKLinesTpSl.mjs</a>, <a href="buildKLinesTpSl.mjs.html#line72">line 72</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>import fs from 'fs'
+
+let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+//建立數據資料夾, fdOhlc放K線序列, fdParam放指標參數序列
+fs.mkdirSync('./data-ohlc', { recursive: true })
+fs.mkdirSync('./data-param', { recursive: true })
+fs.writeFileSync('./data-ohlc/btc.json', JSON.stringify(arrOhlc), 'utf8')
+
+let r = await buildKLinesTpSl('./data-ohlc', './data-param', './cache/kltpsl.json', {
+    keyOhlc: 'btc',
+    ts: '2020-01-01T00:00:00',
+    te: '2020-01-01T20:00:00',
+    tps: [5],
+    modes: ['long'],
+})
+console.log(r.meta)
+// => {
+//   keyOhlc: 'btc',
+//   ts: '2020-01-01T00:00:00',
+//   te: '2020-01-01T20:00:00',
+//   tps: [ 5 ],
+//   modes: [ 'long' ],
+//   nBars: 6
+// }
+console.log(r.bars['2020-01-01T00:00:00'])
+// => { close: 100, long_5: { win: 1, timeEnd: '2020-01-01T04:00:00' } }
+console.log(r.bars['2020-01-01T12:00:00'])
+// => { close: 95, long_5: { win: -1, timeEnd: null } }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>fdOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入儲存K線(ohlc)序列資料夾字串，各序列以<code>${key}.json</code>儲存</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fdParam</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入儲存指標參數序列資料夾字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fpJson</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入輸出快取json檔案路徑字串，資料夾不存在時自動建立</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>keyOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入K線序列key字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ts</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入起始秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>te</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入結束秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tps</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>[4,5,6,7,8,9,10]</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入止盈止損百分比數值陣列，如5代表止盈與止損皆5%，預設[4,5,6,7,8,9,10]</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>modes</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>['long','short']</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入交易方向字串陣列，預設['long','short']</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳Promise，resolve為{meta,bars}物件，meta內含keyOhlc、ts、te、tps、modes與nBars(K線根數)，bars以進場時間為key，各值內含close與各<code>${mode}_${tpsl}</code>之{win,timeEnd}，並同步寫出至fpJson</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
 
         
             
@@ -2584,6 +3134,386 @@ console.log(fs.readdirSync('./result'))
 
     
 
+    <h4 class="name" id="genKLinesTpSl"><span class="type-signature"></span>genKLinesTpSl<span class="signature">(arrOhlc, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算各K線進場後之止盈止損先觸結果</p>
+<p>以各根K線收盤價為進場價，往後逐根K線掃描first-touch，long以Low&lt;=進場價*(1-sl)判止損、High&gt;=進場價*(1+tp)判止盈
+short以High&gt;=進場價*(1+sl)判止損、Low&lt;=進場價*(1-tp)判止盈，同根同時觸發時皆先判止損
+末根K線與掃描至序列末仍未觸發者視為未結，win為-1且pnl與hold為NaN</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="genKLinesTpSl.mjs.html">genKLinesTpSl.mjs</a>, <a href="genKLinesTpSl.mjs.html#line36">line 36</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+let r = genKLinesTpSl(arrOhlc, { tp: 0.05, sl: 0.05, mode: 'long' })
+console.log(Array.from(r.win))
+// => [ 1, 0, 0, -1, 1, -1 ]
+console.log(Array.from(r.hold))
+// => [ 1, 2, 1, NaN, 1, NaN ]
+console.log(Array.from(r.pnl))
+// => [ 0.05, -0.05, -0.05, NaN, 0.05, NaN ]</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>arrOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入K線陣列，各元素需含time(秒時間字串)、Close、High、Low欄位，且依時間由小至大排序</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>tp</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入止盈比例正數，如0.05代表5%</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>sl</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入止損比例正數，如0.05代表5%</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>mode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'long'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入交易方向字串，可為'long'或'short'，預設'long'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳物件，內含time(時間字串陣列)、pnl(Float64Array，止盈為tp、止損為-sl、未結為NaN)、win(Int8Array，1為止盈先觸、0為止損先觸、-1為未結)、hold(Float64Array，出場K線與進場K線之位移根數，未結為NaN)欄位，各陣列長度同arrOhlc且index對應</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="genReport"><span class="type-signature type-signature-async">(async) </span>genReport<span class="signature">(ott, fpOrders, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
@@ -3290,6 +4220,185 @@ genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, 
     <dd>
         
 <span class="param-type">undefined</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="loadKLinesTpSl"><span class="type-signature"></span>loadKLinesTpSl<span class="signature">(fpJson)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>載入止盈止損先觸結果快取檔並提供訂單重建</p>
+<p>讀取buildKLinesTpSl產出之快取json，提供ordersFromBars依指定mode與tpsl組合與進場時間陣列重建訂單陣列
+重建訂單之盈虧與累計欄位公式逐欄對齊calcOrders，可直接餵入calcOrdersSummary或calcOrdersSummarySimple
+fpJson非有效字串或非檔案時throw</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="loadKLinesTpSl.mjs.html">loadKLinesTpSl.mjs</a>, <a href="loadKLinesTpSl.mjs.html#line36">line 36</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>//fpJson為buildKLinesTpSl產出之快取檔
+let r = loadKLinesTpSl('./cache/kltpsl.json')
+console.log(r.meta.nBars)
+// => 6
+
+let orders = r.ordersFromBars('long', 5, ['2020-01-01T00:00:00', '2020-01-01T12:00:00'], { uTrade: 100, uIni: 1000 })
+console.log(orders.map((o) => `${o.timeStart} ${o.timeEnd || 'unsettled'} ${o.modeResult || '-'}`))
+// => [
+//   '2020-01-01T00:00:00 2020-01-01T04:00:00 profit',
+//   '2020-01-01T12:00:00 unsettled -'
+// ]
+console.log(orders[0].priceStart, orders[0].priceEnd, orders[0].uProfitOrLoss, orders[0].uEquity)
+// => 100 105 4.9 1004.9</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>fpJson</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入buildKLinesTpSl產出之快取json檔案路徑字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳物件，內含meta(快取設定物件)、bars(以進場時間為key之結果物件)與ordersFromBars(mode, tpsl, entryTimes, opt)訂單重建函數，函數之opt可給uTrade(每單金額，預設1)、uIni(初始資金，預設1000)、rFee(手續費率，預設0.0005)、maxExitTime(出場時間大於等於此值之單視為未平倉，預設null)與skipSort(呼叫端保證entryTimes已升序時可省排序，預設false)，回傳訂單陣列，快取內查無之進場時間會被濾除，未結單各盈虧欄位留空</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
 
 
 
@@ -4807,7 +5916,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Mon Aug 03 2026 10:26:54 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Mon Aug 03 2026 14:28:31 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
