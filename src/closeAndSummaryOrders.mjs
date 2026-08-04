@@ -6,8 +6,8 @@ import isestr from 'wsemi/src/isestr.mjs'
 import isarr from 'wsemi/src/isarr.mjs'
 import cint from 'wsemi/src/cint.mjs'
 import fsIsFolder from 'wsemi/src/fsIsFolder.mjs'
+import fsWriteJson from 'wsemi/src/fsWriteJson.mjs'
 import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
-import writeJson from './writeJson.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcSummary from './calcSummary.mjs'
 import genReportCore from './genReportCore.mjs'
@@ -148,8 +148,8 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
         //fpOrders
         let fpOrders = path.resolve(fdTest, fnOrders)
 
-        //writeJson
-        writeJson(fpOrders, r.orders, { structured: true })
+        //fsWriteJson
+        fsWriteJson(fpOrders, r.orders, { useFormat: true })
 
     }
 
@@ -168,8 +168,8 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
         }
         // console.log('stsm', stsm)
 
-        //writeJson
-        writeJson(fpSummary, stsm, { structured: true })
+        //fsWriteJson
+        fsWriteJson(fpSummary, stsm, { useFormat: true })
 
         console.log('summary', r.summary, size(r.orders))
     }

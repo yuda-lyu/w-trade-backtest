@@ -1,10 +1,17 @@
 import path from 'path'
-import _ from 'lodash-es'
-import w from 'wsemi'
+import find from 'lodash-es/find.js'
+import get from 'lodash-es/get.js'
+import map from 'lodash-es/map.js'
+import max from 'lodash-es/max.js'
+import min from 'lodash-es/min.js'
+import isearr from 'wsemi/src/isearr.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import isnum from 'wsemi/src/isnum.mjs'
+import fsIsFile from 'wsemi/src/fsIsFile.mjs'
+import fsReadJson from 'wsemi/src/fsReadJson.mjs'
+import fsWriteJson from 'wsemi/src/fsWriteJson.mjs'
 import calcSummary from './calcSummary.mjs'
 import genReportCore from './genReportCore.mjs'
-import readJson from './readJson.mjs'
-import writeJson from './writeJson.mjs'
 
 
 /**
@@ -61,57 +68,57 @@ import writeJson from './writeJson.mjs'
 let genReport = async (ott, fpOrders, opt = {}) => {
 
     //check
-    if (!w.isestr(fpOrders)) {
+    if (!isestr(fpOrders)) {
         throw new Error(`invalid fpOrders`)
     }
-    if (!w.fsIsFile(fpOrders)) {
+    if (!fsIsFile(fpOrders)) {
         throw new Error(`fpOrders[${fpOrders}] is not a file`)
     }
 
-    //orders
-    let orders = readJson(fpOrders)
-    if (!w.isearr(orders)) {
+    //orders, fsReadJson回傳{success}或{error}, 讀取或解析失敗時取不到success
+    let orders = get(fsReadJson(fpOrders), 'success', null)
+    if (!isearr(orders)) {
         throw new Error(`orders in fpOrders[${fpOrders}] is not an effective array`)
     }
 
     //fpOut
-    let fpOut = _.get(opt, 'fpOut', '')
-    if (!w.isestr(fpOut)) {
+    let fpOut = get(opt, 'fpOut', '')
+    if (!isestr(fpOut)) {
         fpOut = path.resolve(path.dirname(fpOrders), 'report.html')
     }
 
     //name
-    let name = _.get(opt, 'name', '')
-    if (!w.isestr(name)) {
+    let name = get(opt, 'name', '')
+    if (!isestr(name)) {
         name = path.basename(path.dirname(path.resolve(fpOrders)))
     }
 
     //uIni, 未給則由首筆已結算單推回(calcOrders 定義 uEquity = uIni + uCumuProfitOrLoss)
-    let uIni = _.get(opt, 'uIni', null)
-    if (!w.isnum(uIni)) {
-        let o = _.find(orders, (o) => w.isnum(o.uEquity) && w.isnum(o.uCumuProfitOrLoss))
+    let uIni = get(opt, 'uIni', null)
+    if (!isnum(uIni)) {
+        let o = find(orders, (o) => isnum(o.uEquity) && isnum(o.uCumuProfitOrLoss))
         uIni = o ? o.uEquity - o.uCumuProfitOrLoss : 1000
     }
 
     //timeOhlcStart, timeOhlcEnd, 未給則由訂單起訖推得
-    let timeOhlcStart = _.get(opt, 'timeOhlcStart', '')
-    if (!w.isestr(timeOhlcStart)) {
-        timeOhlcStart = _.min(_.map(orders, 'timeStart'))
+    let timeOhlcStart = get(opt, 'timeOhlcStart', '')
+    if (!isestr(timeOhlcStart)) {
+        timeOhlcStart = min(map(orders, 'timeStart'))
     }
-    let timeOhlcEnd = _.get(opt, 'timeOhlcEnd', '')
-    if (!w.isestr(timeOhlcEnd)) {
-        timeOhlcEnd = _.max(_.map(orders, (o) => w.isestr(o.timeEnd) ? o.timeEnd : o.timeStart))
+    let timeOhlcEnd = get(opt, 'timeOhlcEnd', '')
+    if (!isestr(timeOhlcEnd)) {
+        timeOhlcEnd = max(map(orders, (o) => isestr(o.timeEnd) ? o.timeEnd : o.timeStart))
     }
 
     //withWriteSummary
-    let withWriteSummary = _.get(opt, 'withWriteSummary', false)
+    let withWriteSummary = get(opt, 'withWriteSummary', false)
 
     //calcSummary
     let summary = await calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd)
 
-    //writeJson
+    //fsWriteJson
     if (withWriteSummary) {
-        writeJson(path.resolve(path.dirname(fpOut), 'summary.json'), { name, summary }, { structured: true })
+        fsWriteJson(path.resolve(path.dirname(fpOut), 'summary.json'), { name, summary }, { useFormat: true })
     }
 
     //genReportCore

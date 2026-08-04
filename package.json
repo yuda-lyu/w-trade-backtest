@@ -1,11 +1,10 @@
 {
   "name": "w-trade-backtest",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "dist/w-trade-backtest.umd.js",
   "dependencies": {
-    "dayjs": "^1.11.21",
     "lodash-es": "^4.18.1",
-    "w-data-tdprovide": "^1.0.3",
+    "w-data-tdprovide": "^1.0.4",
     "wsemi": "^1.8.67"
   },
   "devDependencies": {

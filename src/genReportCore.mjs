@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import writeTxt from './writeTxt.mjs'
+import fsWriteText from 'wsemi/src/fsWriteText.mjs'
 
 
 //模板資產(tmp.html, render*.js)與本模組同資料夾, 以模組位置解析, 不依賴 cwd
@@ -47,8 +47,8 @@ let genReportCore = (r, fpOut) => {
     h = h.replace(`{orders}`, JSON.stringify(r.orders))
     h = h.replace(`{summary}`, JSON.stringify(r.summary))
 
-    //writeTxt
-    writeTxt(fpOut, h)
+    //fsWriteText
+    fsWriteText(fpOut, h)
 
 }
 

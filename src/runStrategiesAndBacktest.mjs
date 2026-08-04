@@ -3,10 +3,10 @@ import get from 'lodash-es/get.js'
 import size from 'lodash-es/size.js'
 import isearr from 'wsemi/src/isearr.mjs'
 import fsIsFolder from 'wsemi/src/fsIsFolder.mjs'
+import fsWriteJson from 'wsemi/src/fsWriteJson.mjs'
 import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
 import runStrategies from './runStrategies.mjs'
 import genReportCore from './genReportCore.mjs'
-import writeJson from './writeJson.mjs'
 
 
 /**
@@ -106,8 +106,8 @@ let runStrategiesAndBacktest = async (ott, fdOhlc, fdParam, strategies, timeStar
         //fpOrders
         let fpOrders = path.resolve(fdTest, fnOrders)
 
-        //writeJson
-        writeJson(fpOrders, r.orders, { structured: true })
+        //fsWriteJson
+        fsWriteJson(fpOrders, r.orders, { useFormat: true })
 
     }
 
@@ -126,8 +126,8 @@ let runStrategiesAndBacktest = async (ott, fdOhlc, fdParam, strategies, timeStar
         }
         // console.log('stsm', stsm)
 
-        //writeJson
-        writeJson(fpSummary, stsm, { structured: true })
+        //fsWriteJson
+        fsWriteJson(fpSummary, stsm, { useFormat: true })
 
         console.log('summary', r.summary, size(r.orders))
     }

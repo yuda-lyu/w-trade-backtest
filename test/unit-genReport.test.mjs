@@ -1,10 +1,10 @@
 import assert from 'assert'
 import fs from 'fs'
 import path from 'path'
+import fsWriteJson from 'wsemi/src/fsWriteJson.mjs'
 import calcOrders from '../src/calcOrders.mjs'
 import genReport from '../src/genReport.mjs'
 import ott from '../src/ott.mjs'
-import writeJson from '../src/writeJson.mjs'
 import { approx, t00, t16, t20, buildArrOhlc, buildOrders, buildFdTmp } from './unit-setup.mjs'
 
 
@@ -27,7 +27,7 @@ describe('genReport', function() {
     let writeSettledOrders = async (fd) => {
         let orders = await calcOrders(buildArrOhlc(), buildOrders(), { uIni: 1000 })
         let fpOrders = path.resolve(fdTmp, fd, 'orders.json')
-        writeJson(fpOrders, orders)
+        fsWriteJson(fpOrders, orders)
         return fpOrders
     }
 
@@ -106,7 +106,7 @@ describe('genReport', function() {
 
     it('orders.json內容非有效陣列時reject', async function() {
         let fp = path.resolve(fdTmp, 'gr-invalid', 'orders.json')
-        writeJson(fp, [])
+        fsWriteJson(fp, [])
         await assert.rejects(genReport(ott, fp), { message: `orders in fpOrders[${fp}] is not an effective array` })
     })
 
