@@ -100,13 +100,16 @@ let calcOrdersSummarySimple = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd,
         cum += delta.get(t); cumAt.set(t, cum)
     }
     let uTradeAllMax = 0
+    let rTradeAllMax = '' //無訂單(峰值從未更新)時維持'' (對齊原版初始值語義, 原版僅於uTradeAllMax被更新時賦值)
     for (let o of ordersAll) {
         let v = Math.abs(cumAt.get(o.timeStart))
-        if (v > uTradeAllMax) uTradeAllMax = v
+        if (v > uTradeAllMax) {
+            uTradeAllMax = v
+            rTradeAllMax = dig(uTradeAllMax / uIni * 100, 2) + '%'
+        }
     }
 
     let rWin = dig(nWin / numTradeFin * 100, 2) + '%'
-    let rTradeAllMax = dig(uTradeAllMax / uIni * 100, 2) + '%'
 
     let btDays = ott(timeOhlcEnd).diff(ott(timeOhlcStart), 'day')
     let btYears = btDays / 365

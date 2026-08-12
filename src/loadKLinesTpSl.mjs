@@ -3,6 +3,7 @@ import fs from 'fs'
 import dig from 'wsemi/src/dig.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import fsIsFile from 'wsemi/src/fsIsFile.mjs'
+import settleOrderPnl from './settleOrderPnl.mjs'
 
 
 /**
@@ -95,9 +96,7 @@ let loadKLinesTpSl = (fpJson) => {
             }
             o.timeEnd = r.timeEnd
             o.priceEnd = r.win === 1 ? o.priceTakeProfit : o.priceStopLoss
-            o.uProfitOrLoss = o.mode === 'long'
-                ? o.uTrade * (o.priceEnd / o.priceStart) - o.uTrade - 2 * o.uFee
-                : (o.priceStart - o.priceEnd) * (o.uTrade / o.priceStart) - 2 * o.uFee
+            o.uProfitOrLoss = settleOrderPnl(o.mode, o.uTrade, o.priceStart, o.priceEnd, o.uFee)
             o.rProfitOrLoss = o.uProfitOrLoss / o.uTrade
             uCumu += o.uProfitOrLoss
             o.uCumuProfitOrLoss = uCumu
