@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
     
 </nav>
 
@@ -665,6 +665,407 @@ console.log(r.bars['2020-01-01T12:00:00'])
     <dd>
         
 <span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="buildStrategyFastSession"><span class="type-signature"></span>buildStrategyFastSession<span class="signature">(ott, opt)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>建立策略快速評估session，供求解熱路徑(如RGA/PSO目標函數)重複評估同一K線窗之不同條件組合</p>
+<p>建置期一次攤提runStrategy每次呼叫都要重建的不變量: 各因子{time,param}序列轉為K棒對位Float64Array(缺值填NaN)、各(tp,sl)組合之first-touch預算表(genKLinesTpSl，惰性建置+Map快取)
+評估期單迴圈逐棒判斷conds觸發並沿calcOrders同式結算(settleOrderPnl)，摘要直接以calcOrdersSummarySimple計算，與官方全鏈(runStrategy→calcOrders→calcOrdersSummary)對應欄位嚴格相等
+觸發語義與runStrategy等價: 任一cond序列於該棒缺值(NaN)即整棒跳過(等同僅於全部cond序列皆有值之共同時間點判斷)、'and'組須全真且'or'組至少一真、sym為'&gt;'比大於否則比小於
+序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="buildStrategyFastSession.mjs.html">buildStrategyFastSession.mjs</a>, <a href="buildStrategyFastSession.mjs.html#line63">line 63</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let arrOhlc = [
+    { time: '2020-01-01T00:00:00', Open: 100, High: 101, Low: 99, Close: 100 },
+    { time: '2020-01-01T04:00:00', Open: 100, High: 106, Low: 100, Close: 105 },
+    { time: '2020-01-01T08:00:00', Open: 105, High: 107, Low: 102, Close: 103 },
+    { time: '2020-01-01T12:00:00', Open: 103, High: 104, Low: 94, Close: 95 },
+    { time: '2020-01-01T16:00:00', Open: 95, High: 98, Low: 92, Close: 93 },
+    { time: '2020-01-01T20:00:00', Open: 93, High: 99, Low: 95, Close: 97 },
+]
+
+let arrSig = [
+    { time: '2020-01-01T00:00:00', param: 1 },
+    { time: '2020-01-01T04:00:00', param: 0 },
+    { time: '2020-01-01T08:00:00', param: 1 },
+    { time: '2020-01-01T12:00:00', param: 0 },
+    { time: '2020-01-01T16:00:00', param: 0 },
+    { time: '2020-01-01T20:00:00', param: 0 },
+]
+
+let session = buildStrategyFastSession(ott, {
+    arrOhlc,
+    mode: 'long',
+    serieses: { sig: arrSig },
+})
+
+let sm = session.evaluate({
+    conds: [{ key: 'sig', sym: '>', th: 0.5, opr: 'and' }],
+    tp: 0.05,
+    sl: 0.03,
+    settings: { uIni: 1000, uTrade: 100, rFee: 0.0005 },
+})
+console.log(sm.numTrade, sm.rWin, sm.uEquityFinal)
+// => 2 50.00% 1001.8</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入設定物件</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>arrOhlc</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入K線陣列，各元素需含time(秒時間字串)、Close、High、Low欄位，且依時間由小至大排序，與runStrategy之funGetSeries(keyOhlc)同一份</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>mode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入交易方向字串，'long'或'short'</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>serieses</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入因子序列物件，key為因子名稱，value為{time,param}陣列，param須為有限數值</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tpsls</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>[]</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入預建first-touch表之{tp,sl}陣列，未列組合於evaluate時惰性建置，預設[]</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
 
 
 
@@ -4255,7 +4656,7 @@ fpJson非有效字串或非檔案時throw</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="loadKLinesTpSl.mjs.html">loadKLinesTpSl.mjs</a>, <a href="loadKLinesTpSl.mjs.html#line36">line 36</a>
+        <a href="loadKLinesTpSl.mjs.html">loadKLinesTpSl.mjs</a>, <a href="loadKLinesTpSl.mjs.html#line37">line 37</a>
     </li></ul></dd>
     
 
@@ -5897,6 +6298,269 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 
 
         
+            
+
+    
+
+    <h4 class="name" id="settleOrderPnl"><span class="type-signature"></span>settleOrderPnl<span class="signature">(mode, uTrade, priceStart, priceEnd, uFee)</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算單筆訂單之淨盈虧金額(USDT)</p>
+<p>結算公式與calcOrders逐字對齊(bit-exact): long為uTrade*(priceEnd/priceStart)-uTrade-2<em>uFee，short為(priceStart-priceEnd)</em>(uTrade/priceStart)-2*uFee
+供loadKLinesTpSl之ordersFromBars與buildStrategyFastSession共用，避免套件內出現第三份手抄公式</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="settleOrderPnl.mjs.html">settleOrderPnl.mjs</a>, <a href="settleOrderPnl.mjs.html#line21">line 21</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(settleOrderPnl('long', 100, 100, 105, 0.05))
+// => 4.9</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>mode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入交易方向字串，'long'或'short'</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>uTrade</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入下單金額(USDT)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>priceStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入進場價格</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>priceEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入出場價格</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>uFee</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入單邊手續費(USDT)，結算扣2*uFee</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳淨盈虧金額(USDT)，含手續費</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Number</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
     
 
     
@@ -5916,7 +6580,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sat Aug 08 2026 15:13:36 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Aug 12 2026 14:44:02 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
