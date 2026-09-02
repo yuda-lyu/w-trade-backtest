@@ -1,5 +1,5 @@
 /*!
- * w-trade-backtest v1.1.9
+ * w-trade-backtest v1.1.10
  * (c) 2018-2021 yuda-lyu(semisphere)
  * Released under the MIT License.
  */
