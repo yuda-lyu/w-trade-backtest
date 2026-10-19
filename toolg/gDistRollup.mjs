@@ -28,7 +28,9 @@ async function rp() {
         ],
     })
         .catch((err) => {
+            //建置失敗須以非0結束, 使發布流程得知
             console.log(err)
+            process.exitCode = 1
         })
 
     //genReportCore於執行期以fs讀取同資料夾之模板資產(js與html不打包進bundle), 故須複製至dist
@@ -46,6 +48,8 @@ async function rp() {
 }
 rp()
     .catch((err) => {
+        //建置失敗須以非0結束, 使發布流程得知
         console.log(err)
+        process.exitCode = 1
     })
 
