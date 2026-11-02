@@ -1,10 +1,10 @@
 {
   "name": "w-trade-backtest",
-  "version": "1.1.23",
+  "version": "1.1.24",
   "main": "dist/w-trade-backtest.umd.js",
   "dependencies": {
-    "w-data-tdprovide": "^1.0.28",
-    "wsemi": "^1.9.45"
+    "w-data-tdprovide": "^1.0.29",
+    "wsemi": "^1.9.46"
   },
   "devDependencies": {
     "w-package-tools": "^1.1.23"
