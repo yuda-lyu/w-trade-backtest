@@ -1,13 +1,13 @@
 {
   "name": "w-trade-backtest",
-  "version": "1.1.30",
+  "version": "1.1.31",
   "main": "dist/w-trade-backtest.umd.js",
   "dependencies": {
-    "w-data-tdprovide": "^1.0.35",
-    "wsemi": "^1.9.55"
+    "w-data-tdprovide": "^1.0.36",
+    "wsemi": "^1.9.56"
   },
   "devDependencies": {
-    "w-package-tools": "^1.1.25"
+    "w-package-tools": "^1.1.26"
   },
   "scripts": {
     "test": "mocha --parallel \"test/*.test.mjs\" --timeout 180000",
