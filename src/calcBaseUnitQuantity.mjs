@@ -1,0 +1,210 @@
+import isobj from 'wsemi/src/isobj.mjs'
+import isenum from 'wsemi/src/isenum.mjs'
+import iseint from 'wsemi/src/iseint.mjs'
+import cdbl from 'wsemi/src/cdbl.mjs'
+import cint from 'wsemi/src/cint.mjs'
+
+
+//toDec, 正或零之有限數轉十進位定點{m,s}(值 = m × 10^-s), 以String(v)之最短可逆表示為準(0.001即恰為1/1000)
+let toDec = (v) => {
+    let s = String(v)
+    let r = /^(\d+)(?:\.(\d+))?(?:e([+-]\d+))?$/.exec(s)
+    if (r === null) {
+        throw new Error(`can not convert a number to decimal`)
+    }
+    let fp = r[2] || ''
+    let ex = r[3] ? parseInt(r[3], 10) : 0
+    let m = BigInt(r[1] + fp)
+    let sc = fp.length - ex
+    if (sc < 0) {
+        m = m * (10n ** BigInt(-sc))
+        sc = 0
+    }
+    return { m, s: sc }
+}
+
+//decToStr, 十進位定點轉定點字串(小數位數恰為s)
+let decToStr = (m, s) => {
+    let str = m.toString()
+    if (s === 0) {
+        return str
+    }
+    if (str.length <= s) {
+        str = '0'.repeat(s - str.length + 1) + str
+    }
+    return `${str.slice(0, str.length - s)}.${str.slice(str.length - s)}`
+}
+
+//decToNum, 十進位定點轉Number(經十進位字串, 由Number解析取最近之浮點值)
+let decToNum = (m, s) => Number(decToStr(m, s))
+
+//ceilDiv, 正整數上取整除法(a>=0, b>0)
+let ceilDiv = (a, b) => (a + b - 1n) / b
+
+//p10, 10的整數次方
+let p10 = (n) => 10n ** BigInt(n)
+
+//isPlainObject, 一般物件(跨套件規格O1): isobj為真且原型為Object.prototype或null, 類別實例、Date、Map、陣列、函數等皆非(內部用, 不入文件)
+let isPlainObject = (v) => {
+    if (!isobj(v)) {
+        return false
+    }
+    let p = Object.getPrototypeOf(v)
+    return p === Object.prototype || p === null
+}
+
+
+//parseBaseUnitPrice, 解析並檢測價格(內部用, 不入文件): 有效數字(isenum判定, 數字或數字字串)且大於0, 通過即以cdbl轉為Number後使用; 無效時throw(訊息不含輸入值), name為訊息所用之名稱
+let parseBaseUnitPrice = (price, name = 'price') => {
+    if (!isenum(price, { gt: 0 })) {
+        throw new Error(`invalid ${name}: must be a positive number`)
+    }
+    return cdbl(price)
+}
+
+//parseBaseUnitRule, 解析並檢測交易規則(內部用, 不入文件): rule須為物件, stepSize、minQty、minNotional各為有效數字(isenum判定)且大於0, 通過即以cdbl轉為Number後使用; 無效時throw(訊息不含輸入值); 回傳含轉換後三值之新物件(不改寫呼叫端之rule), name為訊息所用之名稱
+let parseBaseUnitRule = (rule, name = 'rule') => {
+    if (!isPlainObject(rule)) {
+        throw new Error(`invalid ${name}: must be an object`)
+    }
+    let r = {}
+    for (let k of ['stepSize', 'minQty', 'minNotional']) {
+        let v = rule[k]
+        if (!isenum(v, { gt: 0 })) {
+            throw new Error(`invalid ${name}.${k}: must be a positive number`)
+        }
+        r[k] = cdbl(v)
+    }
+    return r
+}
+
+//parseBaseUnitOpt, 解析並檢測含buffer與units之物件(內部用, 不入文件): obj為undefined或null視為未給, 非物件即throw; buffer、units為undefined或null時取預設(0.1、1), 給了而無效即throw、不改用預設(影響下單數量與名義, 不靜默改值);
+//  buffer須為有效數字(isenum判定)且大於等於0, units須為有效整數(iseint判定)且大於等於1, 通過即以cdbl、cint轉為Number後使用; 訊息不含輸入值; 回傳含轉換後buffer與units之新物件, name為訊息所用之名稱
+let parseBaseUnitOpt = (obj, name = 'opt') => {
+    if (obj === undefined || obj === null) {
+        obj = {}
+    }
+    if (!isPlainObject(obj)) {
+        throw new Error(`invalid ${name}: must be an object`)
+    }
+    let buffer = obj.buffer
+    let units = obj.units
+    if (buffer === undefined || buffer === null) {
+        buffer = 0.1
+    }
+    else {
+        if (!isenum(buffer, { min: 0 })) {
+            throw new Error(`invalid ${name}.buffer: must be a non-negative number`)
+        }
+        buffer = cdbl(buffer)
+    }
+    if (units === undefined || units === null) {
+        units = 1
+    }
+    else {
+        if (!iseint(units, { min: 1 })) {
+            throw new Error(`invalid ${name}.units: must be a positive integer`)
+        }
+        units = cint(units)
+    }
+    return { buffer, units }
+}
+
+//calcBaseUnitCore, 以已檢測轉換之輸入計算基礎單位(內部用, 不入文件): price、rule、buffer、units須已通過parseBaseUnitPrice、parseBaseUnitRule、parseBaseUnitOpt; 格數k超過Number.MAX_SAFE_INTEGER(價格相對步長過小)或數量與名義超出雙精度範圍時throw
+let calcBaseUnitCore = (price, rule, buffer, units) => {
+
+    //十進位定點
+    let dp = toDec(price)
+    let ds = toDec(rule.stepSize)
+    let dq = toDec(rule.minQty)
+    let dn = toDec(rule.minNotional)
+    let db = toDec(buffer)
+
+    //k1 = ceil(minQty / stepSize)
+    let k1 = ceilDiv(dq.m * p10(ds.s), ds.m * p10(dq.s))
+
+    //k2 = ceil(minNotional × (1 + buffer) / (price × stepSize)), 門檻先以十進位求得(minNotional × (10^sb + mb) / 10^(sn + sb))
+    let k2 = ceilDiv(dn.m * (p10(db.s) + db.m) * p10(dp.s + ds.s), dp.m * ds.m * p10(dn.s + db.s))
+
+    //k, 超過安全整數時Number無法精確表示格數, 拋錯不靜默改值
+    let k = k1 > k2 ? k1 : k2
+    if (k > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error(`invalid price or rule: step count k must not exceed Number.MAX_SAFE_INTEGER`)
+    }
+
+    //q0, n0, quantity, notional
+    let bu = BigInt(units)
+    let mq0 = k * ds.m
+    let mn0 = mq0 * dp.m
+    let q0 = decToNum(mq0, ds.s)
+    let n0 = decToNum(mn0, ds.s + dp.s)
+    let quantityStr = decToStr(bu * mq0, ds.s)
+    let quantity = Number(quantityStr)
+    let notional = decToNum(bu * mn0, ds.s + dp.s)
+
+    //數量與名義轉回Number須為有限數(格數雖在安全整數內, 步長、價格或單位數過大時轉回會成Infinity), 拋錯不靜默回傳Infinity
+    if (!Number.isFinite(q0) || !Number.isFinite(n0) || !Number.isFinite(quantity) || !Number.isFinite(notional)) {
+        throw new Error(`invalid price or rule: quantity and notional must be finite numbers`)
+    }
+
+    return {
+        k: Number(k),
+        q0,
+        n0,
+        units,
+        quantity,
+        notional,
+        quantityStr,
+    }
+}
+
+
+/**
+ * 計算交易所規則下之基礎單位數量(最小可下單數量)與其名義價值
+ *
+ * 格數k = max(⌈minQty/stepSize⌉, ⌈minNotional×(1+buffer)/(price×stepSize)⌉)，基礎單位數量q0 = k×stepSize、名義n0 = q0×price，即數量為步長之整數倍、不小於最小數量、名義不低於minNotional×(1+buffer)且為滿足三者之最小值(k-1必違反其一)
+ * 全程以十進位定點(BigInt)計算，各輸入數字轉為Number後以其最短十進位表示(String)為準(數字字串須於15位有效數字內才能往返不失真)，門檻與邊界(名義恰等於門檻)不因浮點誤差多取或少取一格；回傳之數量與名義為十進位精確值轉回之Number
+ * units為單位數，quantity = units×q0、notional = units×n0
+ * 輸入檢測依有效數字(isenum)與有效整數(iseint)，通過即轉型後使用，故price、rule.stepSize、rule.minQty、rule.minNotional、opt.buffer可給數字或數字字串(交易所API之stepSize等常為字串)，opt.units可給整數或整數字串；Infinity、NaN、包裝物件、布林皆無效
+ * price非正數、rule非物件或其stepSize、minQty、minNotional非正數、opt非物件(undefined與null視為未給)、opt.buffer非非負數、opt.units非正整數時throw，訊息為`invalid <名稱>: must be <種類>`且不含輸入值；opt.buffer與opt.units於undefined或null時取預設，給了而無效即throw、不改用預設(影響下單數量與名義)
+ * 格數k超過Number.MAX_SAFE_INTEGER(價格相對步長過小)或數量與名義轉回Number超出雙精度範圍(成為Infinity)時throw，不回傳Infinity
+ * rule與opt須為一般物件(原型為Object.prototype或null；類別實例、陣列、Date、Map等無效)
+ *
+ * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
+ * @function
+ * @param {Number|String} price 輸入價格，有效數字(數字或數字字串)且大於0(回測取該單進場價)
+ * @param {Object} rule 輸入交易規則物件，需含stepSize(數量步長)、minQty(最小數量)、minNotional(最小名義價值)，皆為有效數字(數字或數字字串)且大於0，其他欄位(如查得時刻)不使用
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Number|String} [opt.buffer=0.1] 輸入名義門檻之緩衝比例，有效數字且大於等於0，門檻為minNotional×(1+buffer)，預設0.1
+ * @param {Number|String} [opt.units=1] 輸入單位數，有效整數且大於等於1，預設1
+ * @returns {Object} 回傳物件，內含k(每單位之步長格數)、q0(基礎單位數量)、n0(基礎單位名義)、units(單位數)、quantity(units×q0)、notional(units×n0)、quantityStr(quantity之定點字串，小數位數同stepSize，可直接作為下單數量)
+ * @example
+ *
+ * let rule = { stepSize: 0.001, minQty: 0.001, minNotional: 20 }
+ *
+ * console.log(calcBaseUnitQuantity(2000, rule))
+ * // => { k: 11, q0: 0.011, n0: 22, units: 1, quantity: 0.011, notional: 22, quantityStr: '0.011' }
+ *
+ * console.log(calcBaseUnitQuantity(1999, rule))
+ * // => { k: 12, q0: 0.012, n0: 23.988, units: 1, quantity: 0.012, notional: 23.988, quantityStr: '0.012' }
+ *
+ * console.log(calcBaseUnitQuantity(2001, rule, { units: 3 }))
+ * // => { k: 11, q0: 0.011, n0: 22.011, units: 3, quantity: 0.033, notional: 66.033, quantityStr: '0.033' }
+ *
+ * console.log(calcBaseUnitQuantity('2001', { stepSize: '0.001', minQty: '0.001', minNotional: '20' }, { units: '3' }))
+ * // => { k: 11, q0: 0.011, n0: 22.011, units: 3, quantity: 0.033, notional: 66.033, quantityStr: '0.033' }
+ *
+ */
+let calcBaseUnitQuantity = (price, rule, opt = {}) => {
+
+    //check, 依參數順序由左至右
+    let p = parseBaseUnitPrice(price)
+    let r = parseBaseUnitRule(rule)
+    let o = parseBaseUnitOpt(opt)
+
+    return calcBaseUnitCore(p, r, o.buffer, o.units)
+}
+
+
+export { isPlainObject, parseBaseUnitPrice, parseBaseUnitRule, parseBaseUnitOpt, calcBaseUnitCore }
+export default calcBaseUnitQuantity

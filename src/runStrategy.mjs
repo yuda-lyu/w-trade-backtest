@@ -13,6 +13,7 @@ import pmSeries from 'wsemi/src/pmSeries.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcOrdersRatio from './calcOrdersRatio.mjs'
 import calcOrdersSummary from './calcOrdersSummary.mjs'
+import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
 
 
 /**
@@ -21,12 +22,13 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  * 於各時間點以conds判斷觸發下單(各條件以sym與th比較該key序列之param值，opr為'and'須全真、'or'至少一真)
  * 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
  * 僅於全部conds序列皆有值之共同時間點判斷觸發
- * strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數時reject
+ * settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，其餘算式不變；未給(undefined或null)unit時行為與輸出不變
+ * strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時reject，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
- * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee})欄位
+ * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit)欄位
  * @param {Function} funGetSeries 輸入序列查詢async函數，依key回傳時間序列陣列
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Boolean} [opt.withCalcOrderProfitOrLoss=true] 輸入是否經calcOrders結算訂單布林值，預設true
@@ -120,6 +122,10 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
     if (!isfun(funGetSeries)) {
         throw new Error(`funGetSeries is not a function`)
     }
+
+    //bu, 依基礎單位定每單名義(settings.unit), 未給(undefined或null)為null, 給了而無效於此throw(先於任何進場)
+    let unit = get(st, 'unit', null)
+    let bu = unit !== null ? buildBaseUnitNotional(unit, 'settings.unit') : null
 
     //withCalcOrderProfitOrLoss
     let withCalcOrderProfitOrLoss = get(opt, 'withCalcOrderProfitOrLoss', true)
@@ -281,13 +287,19 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
             }
         }
 
+        //uTrade, 下單金額(USDT), 給settings.unit時為該單依基礎單位之名義
+        let uTrade = st.uTrade
+        if ((bLong || bShort) && bu !== null) {
+            uTrade = bu.getNotional(v.Close)
+        }
+
         if (bLong) { //做多
             // console.log('long...', time, v.Close)
             let o = {
                 mode: 'long',
                 timeStart: time, //下單買入時所屬k棒時間
                 priceStart: v.Close, //單買入時Close價格
-                uTrade: st.uTrade, //下單金額(USDT)
+                uTrade, //下單金額(USDT)
                 rTakeProfit: st.rTakeProfit, //下單設定止盈比例
                 priceTakeProfit: (1 + st.rTakeProfit) * v.Close, //下單設定止盈價格(USDT)
                 rStopLoss: st.rStopLoss, //下單設定止損比例
@@ -296,7 +308,7 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
                 priceEnd: '', //賣出時Close價格, 待最後結算更新
                 modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
                 rFee: st.rFee, //手續費比例
-                uFee: st.rFee * st.uTrade, //交易手續費(USDT)
+                uFee: st.rFee * uTrade, //交易手續費(USDT)
                 uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
                 rProfitOrLoss: '', //盈虧比例, 待最後結算更新
                 uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新
@@ -313,7 +325,7 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
                 mode: 'short',
                 timeStart: time, //賣出時所屬k棒時間
                 priceStart: v.Close, //賣出時Close價格
-                uTrade: st.uTrade, //下單金額(USDT)
+                uTrade, //下單金額(USDT)
                 rTakeProfit: st.rTakeProfit, //止盈
                 priceTakeProfit: (1 - st.rTakeProfit) * v.Close, //止盈價格(USDT)
                 rStopLoss: st.rStopLoss, //止損
@@ -322,7 +334,7 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
                 priceEnd: '', //買入時Close價格, 待最後結算更新
                 modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
                 rFee: st.rFee, //手續費比例
-                uFee: st.rFee * st.uTrade, //交易手續費(USDT)
+                uFee: st.rFee * uTrade, //交易手續費(USDT)
                 uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
                 rProfitOrLoss: '', //盈虧比例, 待最後結算更新
                 uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新

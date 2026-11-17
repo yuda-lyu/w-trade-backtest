@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
     
 </nav>
 
@@ -124,6 +124,234 @@
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="buildBaseUnitNotional"><span class="type-signature"></span>buildBaseUnitNotional<span class="signature">(unit, name<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>建立依基礎單位計算每單名義之函數</p>
+<p>供runStrategy之settings.unit、buildStrategyFastSession之evaluate之settings.unit、loadKLinesTpSl之ordersFromBars之opt.unit共用，避免各路徑各自解讀選項
+unit為{rule,buffer,units}，rule為交易規則{stepSize,minQty,minNotional}，buffer預設0.1，units預設1，檢測與轉型同calcBaseUnitQuantity(數字或數字字串，通過即轉型)；
+建立時即檢測選項並以價格1試算一次，選項無效時throw(訊息為<code>invalid &lt;name&gt;: must be &lt;種類&gt;</code>、<code>invalid &lt;name&gt;.rule: …</code>、<code>invalid &lt;name&gt;.rule.stepSize: …</code>、<code>invalid &lt;name&gt;.buffer: …</code>、<code>invalid &lt;name&gt;.units: …</code>，不含輸入值)，buffer與units給了而無效即throw、不改用預設
+回傳之getNotional(price)為calcBaseUnitQuantity(price,rule,{buffer,units}).notional，同一價格之結果快取，price無效時throw；key為轉型後選項之識別字串(同key即同結果)，供呼叫端跨次重用</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="buildBaseUnitNotional.mjs.html">buildBaseUnitNotional.mjs</a>, <a href="buildBaseUnitNotional.mjs.html#line26">line 26</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let bu = buildBaseUnitNotional({ rule: { stepSize: 0.001, minQty: 0.001, minNotional: 20 } })
+console.log(bu.key)
+// => '0.001|0.001|20|0.1|1'
+console.log(bu.getNotional(1999))
+// => 23.988</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>unit</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入基礎單位選項物件，需含rule({stepSize,minQty,minNotional})，可含buffer(預設0.1)與units(預設1)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'unit'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入錯誤訊息所用之選項名稱字串，預設'unit'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳物件，內含key(選項識別字串)與getNotional(price)(回傳該價格之每單名義)</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
 
         
             
@@ -694,14 +922,15 @@ console.log(r.bars['2020-01-01T12:00:00'])
 <p>建置期一次攤提runStrategy每次呼叫都要重建的不變量: 各因子{time,param}序列轉為K棒對位Float64Array(缺值填NaN)、各(tp,sl)組合之first-touch預算表(genKLinesTpSl，惰性建置+Map快取)
 評估期單迴圈逐棒判斷conds觸發並沿calcOrders同式結算(settleOrderPnl)，摘要直接以calcOrdersSummarySimple計算，與官方全鏈(runStrategy→calcOrders→calcOrdersSummary)對應欄位嚴格相等
 觸發語義與runStrategy等價: 任一cond序列於該棒缺值(NaN)即整棒跳過(等同僅於全部cond序列皆有值之共同時間點判斷)、'and'組須全真且'or'組至少一真、sym為'&gt;'比大於否則比小於
-序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw</p>
+序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw
+evaluate之settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，與runStrategy之settings.unit同義；未給(undefined或null)unit時行為與輸出不變；unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時throw，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以摘要自行比較</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="buildStrategyFastSession.mjs.html">buildStrategyFastSession.mjs</a>, <a href="buildStrategyFastSession.mjs.html#line63">line 63</a>
+        <a href="buildStrategyFastSession.mjs.html">buildStrategyFastSession.mjs</a>, <a href="buildStrategyFastSession.mjs.html#line65">line 65</a>
     </li></ul></dd>
     
 
@@ -1054,7 +1283,401 @@ console.log(sm.numTrade, sm.rWin, sm.uEquityFinal)
 
         
 <div class="param-desc">
-    <p>回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)</p>
+    <p>回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)與unit(依基礎單位定每單名義，預設不使用)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcBaseUnitQuantity"><span class="type-signature"></span>calcBaseUnitQuantity<span class="signature">(price, rule, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算交易所規則下之基礎單位數量(最小可下單數量)與其名義價值</p>
+<p>格數k = max(⌈minQty/stepSize⌉, ⌈minNotional×(1+buffer)/(price×stepSize)⌉)，基礎單位數量q0 = k×stepSize、名義n0 = q0×price，即數量為步長之整數倍、不小於最小數量、名義不低於minNotional×(1+buffer)且為滿足三者之最小值(k-1必違反其一)
+全程以十進位定點(BigInt)計算，各輸入數字轉為Number後以其最短十進位表示(String)為準(數字字串須於15位有效數字內才能往返不失真)，門檻與邊界(名義恰等於門檻)不因浮點誤差多取或少取一格；回傳之數量與名義為十進位精確值轉回之Number
+units為單位數，quantity = units×q0、notional = units×n0
+輸入檢測依有效數字(isenum)與有效整數(iseint)，通過即轉型後使用，故price、rule.stepSize、rule.minQty、rule.minNotional、opt.buffer可給數字或數字字串(交易所API之stepSize等常為字串)，opt.units可給整數或整數字串；Infinity、NaN、包裝物件、布林皆無效
+price非正數、rule非物件或其stepSize、minQty、minNotional非正數、opt非物件(undefined與null視為未給)、opt.buffer非非負數、opt.units非正整數時throw，訊息為<code>invalid &lt;名稱&gt;: must be &lt;種類&gt;</code>且不含輸入值；opt.buffer與opt.units於undefined或null時取預設，給了而無效即throw、不改用預設(影響下單數量與名義)
+格數k超過Number.MAX_SAFE_INTEGER(價格相對步長過小)或數量與名義轉回Number超出雙精度範圍(成為Infinity)時throw，不回傳Infinity
+rule與opt須為一般物件(原型為Object.prototype或null；類別實例、陣列、Date、Map等無效)</p>
+<p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="calcBaseUnitQuantity.mjs.html">calcBaseUnitQuantity.mjs</a>, <a href="calcBaseUnitQuantity.mjs.html#line198">line 198</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>let rule = { stepSize: 0.001, minQty: 0.001, minNotional: 20 }
+
+console.log(calcBaseUnitQuantity(2000, rule))
+// => { k: 11, q0: 0.011, n0: 22, units: 1, quantity: 0.011, notional: 22, quantityStr: '0.011' }
+
+console.log(calcBaseUnitQuantity(1999, rule))
+// => { k: 12, q0: 0.012, n0: 23.988, units: 1, quantity: 0.012, notional: 23.988, quantityStr: '0.012' }
+
+console.log(calcBaseUnitQuantity(2001, rule, { units: 3 }))
+// => { k: 11, q0: 0.011, n0: 22.011, units: 3, quantity: 0.033, notional: 66.033, quantityStr: '0.033' }
+
+console.log(calcBaseUnitQuantity('2001', { stepSize: '0.001', minQty: '0.001', minNotional: '20' }, { units: '3' }))
+// => { k: 11, q0: 0.011, n0: 22.011, units: 3, quantity: 0.033, notional: 66.033, quantityStr: '0.033' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>price</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入價格，有效數字(數字或數字字串)且大於0(回測取該單進場價)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>rule</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入交易規則物件，需含stepSize(數量步長)、minQty(最小數量)、minNotional(最小名義價值)，皆為有效數字(數字或數字字串)且大於0，其他欄位(如查得時刻)不使用</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>buffer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>0.1</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入名義門檻之緩衝比例，有效數字且大於等於0，門檻為minNotional×(1+buffer)，預設0.1</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>units</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>1</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入單位數，有效整數且大於等於1，預設1</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳物件，內含k(每單位之步長格數)、q0(基礎單位數量)、n0(基礎單位名義)、units(單位數)、quantity(units×q0)、notional(units×n0)、quantityStr(quantity之定點字串，小數位數同stepSize，可直接作為下單數量)</p>
 </div>
 
 
@@ -4656,7 +5279,7 @@ fpJson非有效字串或非檔案時throw</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="loadKLinesTpSl.mjs.html">loadKLinesTpSl.mjs</a>, <a href="loadKLinesTpSl.mjs.html#line37">line 37</a>
+        <a href="loadKLinesTpSl.mjs.html">loadKLinesTpSl.mjs</a>, <a href="loadKLinesTpSl.mjs.html#line38">line 38</a>
     </li></ul></dd>
     
 
@@ -4788,7 +5411,7 @@ console.log(orders[0].priceStart, orders[0].priceEnd, orders[0].uProfitOrLoss, o
 
         
 <div class="param-desc">
-    <p>回傳物件，內含meta(快取設定物件)、bars(以進場時間為key之結果物件)與ordersFromBars(mode, tpsl, entryTimes, opt)訂單重建函數，函數之opt可給uTrade(每單金額，預設1)、uIni(初始資金，預設1000)、rFee(手續費率，預設0.0005)、maxExitTime(出場時間大於等於此值之單視為未平倉，預設null)與skipSort(呼叫端保證entryTimes已升序時可省排序，預設false)，回傳訂單陣列，快取內查無之進場時間會被濾除，未結單各盈虧欄位留空</p>
+    <p>回傳物件，內含meta(快取設定物件)、bars(以進場時間為key之結果物件)與ordersFromBars(mode, tpsl, entryTimes, opt)訂單重建函數，函數之opt可給uTrade(每單金額，預設1)、uIni(初始資金，預設1000)、rFee(手續費率，預設0.0005)、maxExitTime(出場時間大於等於此值之單視為未平倉，預設null)、skipSort(呼叫端保證entryTimes已升序時可省排序，預設false)與unit(依基礎單位定每單名義之選項{rule,buffer,units}，見calcBaseUnitQuantity；給時各單uTrade為units×q0(進場價)×進場價而不使用opt.uTrade、uFee為rFee×該單uTrade；未給(undefined或null)即不使用；給了而無效即throw且先於任何訂單建立，不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數皆為無效，數字字串視同數字；預設null)，回傳訂單陣列，快取內查無之進場時間會被濾除，未結單各盈虧欄位留空</p>
 </div>
 
 
@@ -4828,14 +5451,16 @@ console.log(orders[0].priceStart, orders[0].priceEnd, orders[0].uProfitOrLoss, o
     <dd class="tag-description"><ul class="dummy"><li><p>執行多策略回測</p>
 <p>逐策略呼叫runStrategy(withSummary:false)，各單附加策略sid後合併並依timeStart排序
 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
-個別策略執行失敗(如時間點無參數無法下單)時強制略過</p>
+個別策略執行失敗(如時間點無參數無法下單)時強制略過
+各策略settings給unit({rule,buffer,units}，見calcBaseUnitQuantity與runStrategy)時各單名義依基礎單位；unit給了而無效時先於任何策略之執行即reject(不被上述個別策略之略過吞掉，以免無效之下單單位使該策略被靜默略過)，訊息為<code>invalid strategies[索引].settings.unit…</code>；未給(undefined或null)時行為不變
+合併摘要之本金為各策略settings.uIni之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategies.mjs.html">runStrategies.mjs</a>, <a href="runStrategies.mjs.html#line79">line 79</a>
+        <a href="runStrategies.mjs.html">runStrategies.mjs</a>, <a href="runStrategies.mjs.html#line83">line 83</a>
     </li></ul></dd>
     
 
@@ -5278,14 +5903,15 @@ console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
     <dd class="tag-description"><ul class="dummy"><li><p>執行多策略回測並輸出訂單、摘要與報告檔案</p>
 <p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，建立timeStart至timeEnd範圍之序列查詢函數後執行runStrategies
 合併結果命名為'全部策略'，並輸出orders.json、summary.json、report.html至fdTest資料夾
-fdOhlc或fdParam非資料夾、strategies非有效陣列時throw</p>
+fdOhlc或fdParam非資料夾、strategies非有效陣列時throw
+strategies各元素之settings可含unit(依基礎單位定每單名義，見runStrategies與calcBaseUnitQuantity)，unit給了而無效時先於任何策略之執行即reject</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategiesAndBacktest.mjs.html">runStrategiesAndBacktest.mjs</a>, <a href="runStrategiesAndBacktest.mjs.html#line74">line 74</a>
+        <a href="runStrategiesAndBacktest.mjs.html">runStrategiesAndBacktest.mjs</a>, <a href="runStrategiesAndBacktest.mjs.html#line75">line 75</a>
     </li></ul></dd>
     
 
@@ -5868,14 +6494,15 @@ fdOhlc或fdParam非資料夾、strategies非有效陣列時throw</p>
 <p>於各時間點以conds判斷觸發下單(各條件以sym與th比較該key序列之param值，opr為'and'須全真、'or'至少一真)
 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
 僅於全部conds序列皆有值之共同時間點判斷觸發
-strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數時reject</p>
+settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，其餘算式不變；未給(undefined或null)unit時行為與輸出不變
+strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時reject，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategy.mjs.html">runStrategy.mjs</a>, <a href="runStrategy.mjs.html#line82">line 82</a>
+        <a href="runStrategy.mjs.html">runStrategy.mjs</a>, <a href="runStrategy.mjs.html#line84">line 84</a>
     </li></ul></dd>
     
 
@@ -6063,7 +6690,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
                 </td>
             
 
-            <td class="description last"><p>輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee})欄位</p></td>
+            <td class="description last"><p>輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit)欄位</p></td>
         </tr>
 
     
@@ -6580,7 +7207,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue Nov 17 2026 23:56:04 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 02:51:33 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

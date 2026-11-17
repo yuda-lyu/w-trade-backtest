@@ -13,6 +13,7 @@ import genKLinesTpSl from './genKLinesTpSl.mjs'
 import buildKLinesTpSl from './buildKLinesTpSl.mjs'
 import loadKLinesTpSl from './loadKLinesTpSl.mjs'
 import buildStrategyFastSession from './buildStrategyFastSession.mjs'
+import calcBaseUnitQuantity from './calcBaseUnitQuantity.mjs'
 
 
 let r = {
@@ -31,6 +32,7 @@ let r = {
     buildKLinesTpSl,
     loadKLinesTpSl,
     buildStrategyFastSession,
+    calcBaseUnitQuantity,
 }
 
 

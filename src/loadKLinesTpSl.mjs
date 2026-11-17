@@ -4,6 +4,7 @@ import dig from 'wsemi/src/dig.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import fsIsFile from 'wsemi/src/fsIsFile.mjs'
 import settleOrderPnl from './settleOrderPnl.mjs'
+import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
 
 
 /**
@@ -16,7 +17,7 @@ import settleOrderPnl from './settleOrderPnl.mjs'
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {String} fpJson 輸入buildKLinesTpSl產出之快取json檔案路徑字串
- * @returns {Object} 回傳物件，內含meta(快取設定物件)、bars(以進場時間為key之結果物件)與ordersFromBars(mode, tpsl, entryTimes, opt)訂單重建函數，函數之opt可給uTrade(每單金額，預設1)、uIni(初始資金，預設1000)、rFee(手續費率，預設0.0005)、maxExitTime(出場時間大於等於此值之單視為未平倉，預設null)與skipSort(呼叫端保證entryTimes已升序時可省排序，預設false)，回傳訂單陣列，快取內查無之進場時間會被濾除，未結單各盈虧欄位留空
+ * @returns {Object} 回傳物件，內含meta(快取設定物件)、bars(以進場時間為key之結果物件)與ordersFromBars(mode, tpsl, entryTimes, opt)訂單重建函數，函數之opt可給uTrade(每單金額，預設1)、uIni(初始資金，預設1000)、rFee(手續費率，預設0.0005)、maxExitTime(出場時間大於等於此值之單視為未平倉，預設null)、skipSort(呼叫端保證entryTimes已升序時可省排序，預設false)與unit(依基礎單位定每單名義之選項{rule,buffer,units}，見calcBaseUnitQuantity；給時各單uTrade為units×q0(進場價)×進場價而不使用opt.uTrade、uFee為rFee×該單uTrade；未給(undefined或null)即不使用；給了而無效即throw且先於任何訂單建立，不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數皆為無效，數字字串視同數字；預設null)，回傳訂單陣列，快取內查無之進場時間會被濾除，未結單各盈虧欄位留空
  * @example
  *
  * //fpJson為buildKLinesTpSl產出之快取檔
@@ -48,22 +49,37 @@ let loadKLinesTpSl = (fpJson) => {
     let meta = obj.meta
     let bars = obj.bars
 
+    //kpBu, 各基礎單位選項之名義函數(同key跨次重用其價格快取)
+    let kpBu = new Map()
+
     let ordersFromBars = (mode, tpsl, entryTimes, opt = {}) => {
-        let { uTrade = 1, uIni = 1000, rFee = 0.0005, maxExitTime = null, skipSort = false } = opt
+        let { uTrade = 1, uIni = 1000, rFee = 0.0005, maxExitTime = null, skipSort = false, unit = null } = opt
         let k = `${mode}_${tpsl}`
         let tpr = tpsl / 100
         let uFee = rFee * uTrade
+
+        //bu, 依基礎單位定每單名義(opt.unit), 未給(undefined或null)為null, 給了而無效於此throw(先於任何訂單建立)
+        let bu = unit !== null ? buildBaseUnitNotional(unit, 'opt.unit') : null
+        if (bu !== null) {
+            if (kpBu.has(bu.key)) {
+                bu = kpBu.get(bu.key)
+            }
+            else {
+                kpBu.set(bu.key, bu)
+            }
+        }
 
         //先建全部 order 物件(未結者欄位留空, 對齊 calcOrders 對未平倉單的處理)。
         //  skipSort: 呼叫端保證 entryTimes 已升序時省 [...].sort()(熱路徑省數千筆複製+排序); 預設 false 維持原行為。
         let ets = skipSort ? entryTimes : [...entryTimes].sort()
         let orders = ets.filter((t) => bars[t]).map((t) => {
             let c0 = bars[t].close
+            let uTradeI = bu !== null ? bu.getNotional(c0) : uTrade
             return {
                 mode,
                 timeStart: t,
                 priceStart: c0,
-                uTrade,
+                uTrade: uTradeI,
                 rTakeProfit: tpr,
                 priceTakeProfit: mode === 'long' ? (1 + tpr) * c0 : (1 - tpr) * c0,
                 rStopLoss: tpr,
@@ -72,7 +88,7 @@ let loadKLinesTpSl = (fpJson) => {
                 priceEnd: '',
                 modeResult: '',
                 rFee,
-                uFee,
+                uFee: bu !== null ? rFee * uTradeI : uFee,
                 uProfitOrLoss: '',
                 rProfitOrLoss: '',
                 uCumuProfitOrLoss: '',

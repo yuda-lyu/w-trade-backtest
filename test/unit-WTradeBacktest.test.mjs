@@ -26,6 +26,7 @@ describe('WTradeBacktest', function() {
             'buildKLinesTpSl',
             'loadKLinesTpSl',
             'buildStrategyFastSession',
+            'calcBaseUnitQuantity',
         ]
         assert.deepStrictEqual(Object.keys(WTradeBacktest), keys)
         for (let k of keys) {

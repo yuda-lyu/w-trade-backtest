@@ -1,3 +1,4 @@
+import each from 'lodash-es/each.js'
 import flatten from 'lodash-es/flatten.js'
 import get from 'lodash-es/get.js'
 import isNumber from 'lodash-es/isNumber.js'
@@ -8,6 +9,7 @@ import isestr from 'wsemi/src/isestr.mjs'
 import pmSeries from 'wsemi/src/pmSeries.mjs'
 import runStrategy from './runStrategy.mjs'
 import calcSummary from './calcSummary.mjs'
+import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
 
 
 /**
@@ -16,6 +18,8 @@ import calcSummary from './calcSummary.mjs'
  * 逐策略呼叫runStrategy(withSummary:false)，各單附加策略sid後合併並依timeStart排序
  * 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
  * 個別策略執行失敗(如時間點無參數無法下單)時強制略過
+ * 各策略settings給unit({rule,buffer,units}，見calcBaseUnitQuantity與runStrategy)時各單名義依基礎單位；unit給了而無效時先於任何策略之執行即reject(不被上述個別策略之略過吞掉，以免無效之下單單位使該策略被靜默略過)，訊息為`invalid strategies[索引].settings.unit…`；未給(undefined或null)時行為不變
+ * 合併摘要之本金為各策略settings.uIni之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -83,6 +87,14 @@ let runStrategies = async (ott, strategies, funGetSeries, opt = {}) => {
 
     //withSummary
     let withSummary = get(opt, 'withSummary', true)
+
+    //check settings.unit, 給了而無效於此throw(先於任何策略之執行); 下列逐策略之try/catch會略過失敗之策略, 若不先檢測則無效之unit使該策略被靜默略過
+    each(strategies, (strategy, k) => {
+        let unit = get(strategy, 'settings.unit', null)
+        if (unit !== null) {
+            buildBaseUnitNotional(unit, `strategies[${k}].settings.unit`)
+        }
+    })
 
     //uIniAll, ordersAll
     let uIniAll = 0

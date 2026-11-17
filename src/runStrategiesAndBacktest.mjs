@@ -15,6 +15,7 @@ import genReportCore from './genReportCore.mjs'
  * 以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，建立timeStart至timeEnd範圍之序列查詢函數後執行runStrategies
  * 合併結果命名為'全部策略'，並輸出orders.json、summary.json、report.html至fdTest資料夾
  * fdOhlc或fdParam非資料夾、strategies非有效陣列時throw
+ * strategies各元素之settings可含unit(依基礎單位定每單名義，見runStrategies與calcBaseUnitQuantity)，unit給了而無效時先於任何策略之執行即reject
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function

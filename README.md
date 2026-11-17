@@ -154,6 +154,33 @@ async function test() {
     })
     // => calcSummary: { numTrade: 1, rWin: '100.00%', uEquityFinal: 1004.9 }
 
+    //calcBaseUnitQuantity, 交易所規則下之基礎單位(最小可下單數量): 步長之整數倍、不小於最小數量、名義不低於最小名義價值×(1+buffer)之最小者
+    //  price、rule各欄、buffer、units皆收數字或數字字串(交易所API之stepSize等常為字串), 通過即轉型; 無效時throw(訊息如`invalid rule.stepSize: must be a positive number`, 不含輸入值); buffer與units給了而無效亦throw, 不改用預設
+    let rule = { stepSize: 0.001, minQty: 0.001, minNotional: 20 } //交易規則之例
+    console.log('calcBaseUnitQuantity:', WTradeBacktest.calcBaseUnitQuantity(1999, rule))
+    // => calcBaseUnitQuantity: {
+    //   k: 12,
+    //   q0: 0.012,
+    //   n0: 23.988,
+    //   units: 1,
+    //   quantity: 0.012,
+    //   notional: 23.988,
+    //   quantityStr: '0.012'
+    // }
+
+    //settings.unit, 依基礎單位定每單名義: 各單uTrade = units×q0(進場價)×進場價(不使用settings.uTrade); 最大持倉名義是否超過uIni不檢, 由呼叫端以summary.uTradeAllMax自行比較
+    let rUnit = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { ...strategy.settings, uIni: 10000, unit: { rule, buffer: 0.1, units: 1 } } }, funGetSeries)
+    console.log('runStrategy(unit) orders:', rUnit.orders.map((o) => `${o.timeStart} uTrade=${o.uTrade} rProfitOrLoss=${o.rProfitOrLoss}`))
+    // => runStrategy(unit) orders: [
+    //   '2020-01-01T00:00:00 uTrade=22 rProfitOrLoss=0.049000000000000064',
+    //   '2020-01-01T08:00:00 uTrade=22.042 rProfitOrLoss=-0.031000000000000097'
+    // ]
+    console.log('runStrategy(unit) summary:', {
+        uTradeAllMax: rUnit.summary.uTradeAllMax,
+        uEquityFinal: rUnit.summary.uEquityFinal,
+    })
+    // => runStrategy(unit) summary: { uTradeAllMax: 22.042, uEquityFinal: 10000.394698 }
+
     //genReportCore, 產出html報告(內含權益曲線, 訂單表格, 時間軸與摘要)
     WTradeBacktest.genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './test/tmp-g/report.html')
     console.log('genReportCore: ./test/tmp-g/report.html')

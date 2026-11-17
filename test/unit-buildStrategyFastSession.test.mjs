@@ -3,7 +3,7 @@ import buildStrategyFastSession from '../src/buildStrategyFastSession.mjs'
 import runStrategy from '../src/runStrategy.mjs'
 import calcOrdersSummarySimple from '../src/calcOrdersSummarySimple.mjs'
 import ott from '../src/ott.mjs'
-import { t00, t04, t08, t12, t16, t20, buildArrOhlc, buildArrSig } from './unit-setup.mjs'
+import { mulberry32, genRandomCase, t00, t04, t08, t12, t16, t20, buildArrOhlc, buildArrSig } from './unit-setup.mjs'
 
 
 //規格來源: src/buildStrategyFastSession.mjs
@@ -11,80 +11,6 @@ import { t00, t04, t08, t12, t16, t20, buildArrOhlc, buildArrSig } from './unit-
 //  等值性以property test鎖定: 隨機K線/因子序列(含缺值)/conds(含'or'分組)/tp≠sl/long與short,
 //  對應欄位須與官方summary嚴格相等(含dig捨入後之%字串), uEquityFinal等浮點欄位為bit-exact(===)
 
-
-//mulberry32, 種子化PRNG(測試可重現, 不用Math.random)
-let mulberry32 = (seed) => {
-    let a = seed >>> 0
-    return () => {
-        a = (a + 0x6D2B79F5) >>> 0
-        let t = a
-        t = Math.imul(t ^ (t >>> 15), t | 1)
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-    }
-}
-
-//buildTimes, 自2020-01-01T00:00:00起每4小時一根
-let buildTimes = (nBars) => {
-    let base = ott('2020-01-01T00:00:00')
-    let times = []
-    for (let i = 0; i < nBars; i++) {
-        times.push(base.add(i * 4, 'hour').format('YYYY-MM-DDTHH:mm:ss'))
-    }
-    return times
-}
-
-//genRandomCase, 隨機產生一組(K線, 因子序列含缺值, conds含or分組, tp/sl非對稱, mode)
-let genRandomCase = (rng) => {
-
-    //arrOhlc, 隨機walk且價格恆正
-    let nBars = 30 + Math.floor(rng() * 31)
-    let times = buildTimes(nBars)
-    let arrOhlc = []
-    let c = 100
-    for (let i = 0; i < nBars; i++) {
-        let c2 = c * (1 + (rng() - 0.5) * 0.08)
-        let hi = Math.max(c, c2) * (1 + rng() * 0.03)
-        let lo = Math.min(c, c2) * (1 - rng() * 0.03)
-        arrOhlc.push({ time: times[i], Open: c, High: hi, Low: lo, Close: c2 })
-        c = c2
-    }
-
-    //serieses, 每時間點以0.85機率存在(缺值=該時間點不存在), param為[0,1]
-    let keys = ['sigA', 'sigB', 'sigC'].slice(0, 1 + Math.floor(rng() * 3))
-    let serieses = {}
-    for (let key of keys) {
-        let arr = []
-        for (let i = 0; i < nBars; i++) {
-            if (rng() < 0.85) {
-                arr.push({ time: times[i], param: rng() })
-            }
-        }
-        serieses[key] = arr
-    }
-
-    //conds, 1~3條, 允許同key多條件, and/or混用
-    let nConds = 1 + Math.floor(rng() * 3)
-    let conds = []
-    for (let i = 0; i < nConds; i++) {
-        conds.push({
-            key: keys[Math.floor(rng() * keys.length)],
-            sym: rng() < 0.5 ? '>' : '<',
-            th: 0.2 + rng() * 0.6,
-            opr: rng() < 0.5 ? 'and' : 'or',
-        })
-    }
-
-    //tp/sl非對稱, 含淨虧止盈參數(tp=0.0008時tp*uTrade=0.08 < 2*uFee=0.1)
-    let tps = [0.0008, 0.02, 0.05]
-    let sls = [0.01, 0.03, 0.06]
-    let tp = tps[Math.floor(rng() * tps.length)]
-    let sl = sls[Math.floor(rng() * sls.length)]
-
-    let mode = rng() < 0.5 ? 'long' : 'short'
-
-    return { arrOhlc, serieses, conds, tp, sl, mode }
-}
 
 //st, 熱路徑常用設定
 let st = { uIni: 1000, uTrade: 100, rFee: 0.0005 }

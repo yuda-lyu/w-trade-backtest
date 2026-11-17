@@ -5,6 +5,7 @@ import iseobj from 'wsemi/src/iseobj.mjs'
 import genKLinesTpSl from './genKLinesTpSl.mjs'
 import calcOrdersSummarySimple from './calcOrdersSummarySimple.mjs'
 import settleOrderPnl from './settleOrderPnl.mjs'
+import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
 
 
 /**
@@ -14,6 +15,7 @@ import settleOrderPnl from './settleOrderPnl.mjs'
  * 評估期單迴圈逐棒判斷conds觸發並沿calcOrders同式結算(settleOrderPnl)，摘要直接以calcOrdersSummarySimple計算，與官方全鏈(runStrategy→calcOrders→calcOrdersSummary)對應欄位嚴格相等
  * 觸發語義與runStrategy等價: 任一cond序列於該棒缺值(NaN)即整棒跳過(等同僅於全部cond序列皆有值之共同時間點判斷)、'and'組須全真且'or'組至少一真、sym為'>'比大於否則比小於
  * 序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw
+ * evaluate之settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，與runStrategy之settings.unit同義；未給(undefined或null)unit時行為與輸出不變；unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時throw，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以摘要自行比較
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -23,7 +25,7 @@ import settleOrderPnl from './settleOrderPnl.mjs'
  * @param {String} opt.mode 輸入交易方向字串，'long'或'short'
  * @param {Object} opt.serieses 輸入因子序列物件，key為因子名稱，value為{time,param}陣列，param須為有限數值
  * @param {Array} [opt.tpsls=[]] 輸入預建first-touch表之{tp,sl}陣列，未列組合於evaluate時惰性建置，預設[]
- * @returns {Object} 回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)
+ * @returns {Object} 回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)與unit(依基礎單位定每單名義，預設不使用)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)
  * @example
  *
  * let arrOhlc = [
@@ -121,6 +123,9 @@ let buildStrategyFastSession = (ott, opt = {}) => {
         return ft
     }
 
+    //kpBu, 各基礎單位選項之名義函數(同key跨次evaluate重用其價格快取)
+    let kpBu = new Map()
+
     //預建
     let tpsls = get(opt, 'tpsls', [])
     if (isearr(tpsls)) {
@@ -148,6 +153,19 @@ let buildStrategyFastSession = (ott, opt = {}) => {
         let uTrade = get(st, 'uTrade', 1)
         let rFee = get(st, 'rFee', 0.0005)
         let uFee = rFee * uTrade
+
+        //bu, 依基礎單位定每單名義(settings.unit), 未給(undefined或null)為null, 給了而無效於此throw(先於任何進場); 同key跨次重用其價格快取
+        let unit = get(st, 'unit', null)
+        let bu = null
+        if (unit !== null) {
+            bu = buildBaseUnitNotional(unit, 'settings.unit')
+            if (kpBu.has(bu.key)) {
+                bu = kpBu.get(bu.key)
+            }
+            else {
+                kpBu.set(bu.key, bu)
+            }
+        }
 
         //withOrders
         let withOrders = get(optEv, 'withOrders', false)
@@ -207,6 +225,14 @@ let buildStrategyFastSession = (ott, opt = {}) => {
             let c0 = C[i]
             let w = win[i]
 
+            //uTr, uFe, 該單下單金額與手續費(給settings.unit時依基礎單位之名義)
+            let uTr = uTrade
+            let uFe = uFee
+            if (bu !== null) {
+                uTr = bu.getNotional(c0)
+                uFe = rFee * uTr
+            }
+
             //o, 訂單紀錄(預設精簡欄位供calcOrdersSummarySimple使用; withOrders時與ordersFromBars同構)
             let o
             if (withOrders) {
@@ -214,7 +240,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                     mode,
                     timeStart: time[i],
                     priceStart: c0,
-                    uTrade,
+                    uTrade: uTr,
                     rTakeProfit: tp,
                     priceTakeProfit: mode === 'long' ? (1 + tp) * c0 : (1 - tp) * c0,
                     rStopLoss: sl,
@@ -223,7 +249,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                     priceEnd: '',
                     modeResult: '',
                     rFee,
-                    uFee,
+                    uFee: uFe,
                     uProfitOrLoss: '',
                     rProfitOrLoss: '',
                     uCumuProfitOrLoss: '',
@@ -237,7 +263,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                 o = {
                     timeStart: time[i],
                     timeEnd: '',
-                    uTrade,
+                    uTrade: uTr,
                     uProfitOrLoss: '',
                     uEquity: '',
                     modeResult: '',
@@ -253,7 +279,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                 else {
                     priceEnd = mode === 'long' ? (1 - sl) * c0 : (1 + sl) * c0 //止損線
                 }
-                let u = settleOrderPnl(mode, uTrade, c0, priceEnd, uFee)
+                let u = settleOrderPnl(mode, uTr, c0, priceEnd, uFe)
                 uCumu += u
                 uEquity += u
                 o.timeEnd = time[i + hold[i]]
@@ -262,7 +288,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                 o.modeResult = u < 0 ? 'loss' : 'profit'
                 if (withOrders) {
                     o.priceEnd = priceEnd
-                    o.rProfitOrLoss = u / uTrade
+                    o.rProfitOrLoss = u / uTr
                     o.uCumuProfitOrLoss = uCumu
                     o.rCumuProfitOrLoss = dig((uCumu / uIni) * 100, 2) + '%'
                 }
