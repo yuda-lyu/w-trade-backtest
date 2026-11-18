@@ -3,11 +3,13 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { mulberry32, genRandomCase } from '../unit-setup.mjs'
 
-//對拍工具: 未給unit選項時, 現行src與基準版src之全部輸出須逐位相同(規則帳本R-OPT-01)
+//對拍工具: 未給unit選項時, 現行src與基準版src之全部輸出須逐位相同(規則帳本R-OPT-01);
+//  另比「待測版給intervalSec而timeBasis未給、為'open'或null」與「基準版未給」之全部輸出須逐位相同(規則帳本R-BT-02; 基準版不認得此二選項亦無妨, 一律以未給呼叫)
 //  用法: node test/tools/cmpOutputs.mjs <基準版src資料夾> [<待測src資料夾, 預設./src>]
 //  基準版src之取得: 前一發布版以`npm pack w-trade-backtest@<版本>`解出之package/src, 或`git archive <commit> src`解出者
 //  比對範圍: runStrategy(含unit為null與undefined)、runStrategies、快速評估(摘要、withOrders、預設設定、unit為null與undefined)、
-//    loadKLinesTpSl之ordersFromBars(數種選項組合, 含unit為null與undefined)與其精簡摘要、calcOrders與calcOrdersRatio與calcOrdersSummary與calcOrdersSummarySimple與calcSummary(各單uTrade相異之手工訂單)
+//    loadKLinesTpSl之ordersFromBars(數種選項組合, 含unit為null與undefined)與其精簡摘要、calcOrders與calcOrdersRatio與calcOrdersSummary與calcOrdersSummarySimple與calcSummary(各單uTrade相異之手工訂單);
+//    以上各入口另以待測版給intervalSec(每案2組: 14400, 及輪替之3600、'86400'、14400與'open'、86400與null)比對基準版未給者
 //  浮點以最短十進位字串序列化並區分-0, timeTest(執行當下時間)不比; 離開碼0代表0處不同
 let dirBase = path.resolve(process.argv[2] || '')
 let dirNew = path.resolve(process.argv[3] || './src')
@@ -67,8 +69,10 @@ fs.mkdirSync(fdWork, { recursive: true })
 let nCase = 150
 let rngMeta = mulberry32(20261118)
 let nOrdersTotal = 0
+let btRot = [{ intervalSec: 3600 }, { intervalSec: '86400' }, { intervalSec: 14400, timeBasis: 'open' }, { intervalSec: 86400, timeBasis: null }]
 try {
     for (let i = 0; i < nCase; i++) {
+        let bts = [{ intervalSec: 14400 }, btRot[i % btRot.length]] //待測版所給之每根時長選項(皆未開'span')
         let seed = 1000 + i * 7919
         let rng = mulberry32(seed)
         let c0 = [100, 2000, 60000][i % 3]
@@ -102,6 +106,11 @@ try {
             cmp(`#${i} runStrategy opt ${ser(o)} orders`, a.orders, b.orders)
             cmp(`#${i} runStrategy opt ${ser(o)} summary`, omitTime(a.summary), omitTime(b.summary))
         }
+        for (let bt of bts) {
+            let rN = await N.runStrategy(N.ott, { ...strategy, settings: { ...st, ...bt } }, funGetSeries)
+            cmp(`#${i} runStrategy ${ser(bt)} orders`, rH.orders, rN.orders)
+            cmp(`#${i} runStrategy ${ser(bt)} summary`, omitTime(rH.summary), omitTime(rN.summary))
+        }
 
         //runStrategies: 兩策略
         let sts = [
@@ -112,6 +121,12 @@ try {
         let ssN = await N.runStrategies(N.ott, JSON.parse(JSON.stringify(sts)), funGetSeries)
         cmp(`#${i} runStrategies orders`, ssH.orders, ssN.orders)
         cmp(`#${i} runStrategies summary`, omitTime(ssH.summary), omitTime(ssN.summary))
+        for (let bt of bts) {
+            let stsBt = sts.map((s) => ({ ...s, settings: { ...s.settings, ...bt } }))
+            let ssNb = await N.runStrategies(N.ott, JSON.parse(JSON.stringify(stsBt)), funGetSeries)
+            cmp(`#${i} runStrategies ${ser(bt)} orders`, ssH.orders, ssNb.orders)
+            cmp(`#${i} runStrategies ${ser(bt)} summary`, omitTime(ssH.summary), omitTime(ssNb.summary))
+        }
 
         //快速評估: 摘要、withOrders、預設設定、unit為null與undefined
         let sessH = H.buildStrategyFastSession(H.ott, { arrOhlc: cs.arrOhlc, mode: cs.mode, serieses: cs.serieses })
@@ -124,6 +139,51 @@ try {
         cmp(`#${i} fast withOrders`, sessH.evaluate({ ...input, settings: stF }, { withOrders: true }), sessN.evaluate({ ...input, settings: stF }, { withOrders: true }))
         cmp(`#${i} fast default settings`, sessH.evaluate(input), sessN.evaluate(input))
         cmp(`#${i} fast default settings withOrders`, sessH.evaluate(input, { withOrders: true }), sessN.evaluate(input, { withOrders: true }))
+        for (let bt of bts) {
+            cmp(`#${i} fast summary ${ser(bt)}`, sessH.evaluate({ ...input, settings: stF }), sessN.evaluate({ ...input, settings: { ...stF, ...bt } }))
+            cmp(`#${i} fast withOrders ${ser(bt)}`, sessH.evaluate({ ...input, settings: stF }, { withOrders: true }), sessN.evaluate({ ...input, settings: { ...stF, ...bt } }, { withOrders: true }))
+        }
+
+        //settings之數字字串(R-OPT-02, 數值欄收數字字串並轉型): 待測版給數字字串(各欄各自與全部同時, 含前後空白之寫法)之輸出須等於基準版給數字
+        //  runStrategy、runStrategies(各策略皆給)與快速評估(settings之uIni、uTrade、rFee與input之tp、sl)
+        for (let pad of ['', ' ']) {
+            let toStr = (v) => `${pad}${v}${pad}`
+            let fieldsRun = ['uIni', 'uTrade', 'rTakeProfit', 'rStopLoss', 'rFee']
+            for (let ks of [...fieldsRun.map((k) => [k]), fieldsRun]) {
+                let stS = { ...st }
+                for (let k of ks) {
+                    stS[k] = toStr(st[k])
+                }
+                let tag = `${ks.join('+')} pad=${pad.length}`
+                let rS = await N.runStrategy(N.ott, { ...strategy, settings: stS }, funGetSeries)
+                cmp(`#${i} runStrategy strings ${tag} orders`, rH.orders, rS.orders)
+                cmp(`#${i} runStrategy strings ${tag} summary`, omitTime(rH.summary), omitTime(rS.summary))
+                let stsS = sts.map((s) => ({ ...s, settings: { ...s.settings } }))
+                for (let s of stsS) {
+                    for (let k of ks) {
+                        s.settings[k] = toStr(s.settings[k])
+                    }
+                }
+                let ssS = await N.runStrategies(N.ott, stsS, funGetSeries)
+                cmp(`#${i} runStrategies strings ${tag} orders`, ssH.orders, ssS.orders)
+                cmp(`#${i} runStrategies strings ${tag} summary`, omitTime(ssH.summary), omitTime(ssS.summary))
+            }
+            let fieldsFast = ['uIni', 'uTrade', 'rFee', 'tp', 'sl']
+            for (let ks of [...fieldsFast.map((k) => [k]), fieldsFast]) {
+                let inS = { ...input, settings: { ...stF } }
+                for (let k of ks) {
+                    if (k === 'tp' || k === 'sl') {
+                        inS[k] = toStr(input[k])
+                    }
+                    else {
+                        inS.settings[k] = toStr(stF[k])
+                    }
+                }
+                let tag = `${ks.join('+')} pad=${pad.length}`
+                cmp(`#${i} fast strings ${tag}`, sessH.evaluate({ ...input, settings: stF }), sessN.evaluate(inS))
+                cmp(`#${i} fast strings ${tag} withOrders`, sessH.evaluate({ ...input, settings: stF }, { withOrders: true }), sessN.evaluate(inS, { withOrders: true }))
+            }
+        }
 
         //ordersFromBars: 以基準版之buildKLinesTpSl建快取, 兩邊各自載入
         let tpsl = [2, 3, 5][Math.floor(rngMeta() * 3)]
@@ -156,6 +216,9 @@ try {
             let b = tN.ordersFromBars(cs.mode, tpsl, ev, { ...o, ...oN })
             cmp(`#${i} ordersFromBars ${nm}`, a, b)
             cmp(`#${i} ordersFromBars ${nm} summarySimple`, H.calcOrdersSummarySimple(H.ott, uIni, a, ts, te), N.calcOrdersSummarySimple(N.ott, uIni, b, ts, te))
+            for (let bt of bts) {
+                cmp(`#${i} ordersFromBars ${nm} summarySimple ${ser(bt)}`, H.calcOrdersSummarySimple(H.ott, uIni, a, ts, te), N.calcOrdersSummarySimple(N.ott, uIni, b, ts, te, bt))
+            }
         }
 
         //calcOrders等: 各單uTrade相異之手工訂單
@@ -183,6 +246,15 @@ try {
         cmp(`#${i} calcOrdersSummary`, H.calcOrdersSummary(H.ott, uIni, oH, ts, te), N.calcOrdersSummary(N.ott, uIni, oN, ts, te))
         cmp(`#${i} calcOrdersSummarySimple(manual)`, H.calcOrdersSummarySimple(H.ott, uIni, oH, ts, te), N.calcOrdersSummarySimple(N.ott, uIni, oN, ts, te))
         cmp(`#${i} calcSummary`, omitTime(await H.calcSummary(H.ott, uIni, oH, ts, te)), omitTime(await N.calcSummary(N.ott, uIni, oN, ts, te)))
+        for (let bt of bts) {
+            //兩邊各自重建訂單(上列摘要會於訂單上附加uTradeAll等欄, 故不沿用oH)
+            let oHb = H.calcOrdersRatio(H.ott, await H.calcOrders(cs.arrOhlc, mkOrders(), { uIni }))
+            let oNb = N.calcOrdersRatio(N.ott, await N.calcOrders(cs.arrOhlc, mkOrders(), { uIni }), bt)
+            cmp(`#${i} calcOrders+ratio ${ser(bt)}`, oHb, oNb)
+            cmp(`#${i} calcOrdersSummary ${ser(bt)}`, H.calcOrdersSummary(H.ott, uIni, oHb, ts, te), N.calcOrdersSummary(N.ott, uIni, oNb, ts, te, bt))
+            cmp(`#${i} calcOrdersSummarySimple(manual) ${ser(bt)}`, H.calcOrdersSummarySimple(H.ott, uIni, oHb, ts, te), N.calcOrdersSummarySimple(N.ott, uIni, oNb, ts, te, bt))
+            cmp(`#${i} calcSummary ${ser(bt)}`, omitTime(await H.calcSummary(H.ott, uIni, oHb, ts, te)), omitTime(await N.calcSummary(N.ott, uIni, oNb, ts, te, bt)))
+        }
     }
 }
 finally {

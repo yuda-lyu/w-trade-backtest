@@ -11,12 +11,15 @@
 //   等效年化 = (uEquityFinal - uIni) / uTradeAllMax / 年數。)
 import dig from 'wsemi/src/dig.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
+import { parseBarTime, calcBtDays } from './barTime.mjs'
 
 /**
  * 統計全部訂單之精簡版回測摘要
  *
  * 為calcOrdersSummary之精簡版，只算選股熱路徑所需欄位，純迴圈實作且不需先跑calcOrdersRatio
- * 對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear
+ * 對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear(給相同之opt.intervalSec與opt.timeBasis時亦然)
+ * opt.timeBasis為'span'(須同時給opt.intervalSec)時btDays計至末根收盤(timeOhlcEnd加opt.intervalSec秒)，btYears與等效年化隨之改變(timeOhlcEnd須為末根K線之開盤時刻，傳入窗之結束時刻會多算一根；不檢查opt.intervalSec與K線之實際間距，不符時btDays失真)；未給或'open'時不變，只給opt.intervalSec亦不變
+ * opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時throw
  * 不算drawdown、夏普值與累計曲線
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
@@ -28,6 +31,8 @@ import isestr from 'wsemi/src/isestr.mjs'
  * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Boolean} [opt.skipSort=false] 輸入呼叫端保證ordersAll已依timeStart升序時可跳過排序布林值，預設false
+ * @param {Number|String} [opt.intervalSec=null] 輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)
+ * @param {String} [opt.timeBasis='open'] 輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'
  * @returns {Object} 回傳精簡版回測摘要物件
  * @example
  *
@@ -68,6 +73,9 @@ import isestr from 'wsemi/src/isestr.mjs'
  *
  */
 let calcOrdersSummarySimple = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt = {}) => {
+
+    //bt, 每根時長與時間口徑, 給了而無效於此throw
+    let bt = parseBarTime(opt, 'opt')
 
     //依 timeStart 排序(與原版一致; uEquity 是 calcOrdersFast 依此序的累計)。
     //  opt.skipSort: 呼叫端保證 ordersAll 已依 timeStart 升序時可跳過 slice+sort(熱路徑省數千筆排序); 預設 false 維持原行為。
@@ -111,7 +119,7 @@ let calcOrdersSummarySimple = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd,
 
     let rWin = dig(nWin / numTradeFin * 100, 2) + '%'
 
-    let btDays = ott(timeOhlcEnd).diff(ott(timeOhlcStart), 'day')
+    let btDays = calcBtDays(ott, timeOhlcStart, timeOhlcEnd, bt) //timeBasis為'span'時計至末根收盤(與完整版共用)
     let btYears = btDays / 365
 
     let rEquivalentCumuProfitOrLossFinalNormYear

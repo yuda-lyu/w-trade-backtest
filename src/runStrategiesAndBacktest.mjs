@@ -16,6 +16,8 @@ import genReportCore from './genReportCore.mjs'
  * 合併結果命名為'全部策略'，並輸出orders.json、summary.json、report.html至fdTest資料夾
  * fdOhlc或fdParam非資料夾、strategies非有效陣列時throw
  * strategies各元素之settings可含unit(依基礎單位定每單名義，見runStrategies與calcBaseUnitQuantity)，unit給了而無效時先於任何策略之執行即reject
+ * strategies各元素之settings可含intervalSec與timeBasis(每根時長與時間口徑，見runStrategy與runStrategies)，各策略須相同，給了而無效或各策略不同時先於任何策略之執行與寫檔即reject
+ * strategies各元素之settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss、rFee)收數字或數字字串並轉為Number，給了而無效時同樣先於任何策略之執行與寫檔即reject(見runStrategies)；本函數先讀取數據(建立序列查詢函數)再檢測，不寫檔
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function

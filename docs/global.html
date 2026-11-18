@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcBtDays">calcBtDays</a></li><li><a href="global.html#calcDayHoldSpan">calcDayHoldSpan</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#parseBarTime">parseBarTime</a></li><li><a href="global.html#parseNum">parseNum</a></li><li><a href="global.html#parseSettingsNum">parseSettingsNum</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
     
 </nav>
 
@@ -144,14 +144,16 @@
 <p>供runStrategy之settings.unit、buildStrategyFastSession之evaluate之settings.unit、loadKLinesTpSl之ordersFromBars之opt.unit共用，避免各路徑各自解讀選項
 unit為{rule,buffer,units}，rule為交易規則{stepSize,minQty,minNotional}，buffer預設0.1，units預設1，檢測與轉型同calcBaseUnitQuantity(數字或數字字串，通過即轉型)；
 建立時即檢測選項並以價格1試算一次，選項無效時throw(訊息為<code>invalid &lt;name&gt;: must be &lt;種類&gt;</code>、<code>invalid &lt;name&gt;.rule: …</code>、<code>invalid &lt;name&gt;.rule.stepSize: …</code>、<code>invalid &lt;name&gt;.buffer: …</code>、<code>invalid &lt;name&gt;.units: …</code>，不含輸入值)，buffer與units給了而無效即throw、不改用預設
-回傳之getNotional(price)為calcBaseUnitQuantity(price,rule,{buffer,units}).notional，同一價格之結果快取，price無效時throw；key為轉型後選項之識別字串(同key即同結果)，供呼叫端跨次重用</p>
+回傳之getNotional(price)為calcBaseUnitQuantity(price,rule,{buffer,units}).notional，同一價格之結果快取，price無效時throw；key為轉型後選項之識別字串(同key即同結果)，供呼叫端跨次重用
+回傳之unit為轉型後之選項物件{rule:{stepSize,minQty,minNotional},buffer,units}(各值皆為Number，buffer與units未給時已填入預設0.1與1；每次呼叫本函數回傳之unit皆為新物件，事後修改不影響getNotional)，同key之unit再傳入本函數得同一key，供下游(如求解與策略檔)直接寫入settings.unit而不必自行轉型
+建立時之檢測為以價格1試算一次(通過只代表price為1時可計算；其他價格時格數超過安全整數或數量與名義超出雙精度範圍者，於getNotional(price)時throw)</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="buildBaseUnitNotional.mjs.html">buildBaseUnitNotional.mjs</a>, <a href="buildBaseUnitNotional.mjs.html#line26">line 26</a>
+        <a href="buildBaseUnitNotional.mjs.html">buildBaseUnitNotional.mjs</a>, <a href="buildBaseUnitNotional.mjs.html#line33">line 33</a>
     </li></ul></dd>
     
 
@@ -202,7 +204,12 @@ unit為{rule,buffer,units}，rule為交易規則{stepSize,minQty,minNotional}，
 console.log(bu.key)
 // => '0.001|0.001|20|0.1|1'
 console.log(bu.getNotional(1999))
-// => 23.988</code></pre>
+// => 23.988
+
+//數字字串通過檢測後轉為Number, 並於unit回傳(未給之buffer與units為預設)
+let bu2 = buildBaseUnitNotional({ rule: { stepSize: '0.001', minQty: ' 0.001 ', minNotional: '20' }, units: '2' })
+console.log(bu2.unit)
+// => { rule: { stepSize: 0.001, minQty: 0.001, minNotional: 20 }, buffer: 0.1, units: 2 }</code></pre>
 
 
 
@@ -331,7 +338,7 @@ console.log(bu.getNotional(1999))
 
         
 <div class="param-desc">
-    <p>回傳物件，內含key(選項識別字串)與getNotional(price)(回傳該價格之每單名義)</p>
+    <p>回傳物件，內含key(選項識別字串)、getNotional(price)(回傳該價格之每單名義)與unit(轉型後之選項物件{rule:{stepSize,minQty,minNotional},buffer,units}，各值為Number)</p>
 </div>
 
 
@@ -923,14 +930,16 @@ console.log(r.bars['2020-01-01T12:00:00'])
 評估期單迴圈逐棒判斷conds觸發並沿calcOrders同式結算(settleOrderPnl)，摘要直接以calcOrdersSummarySimple計算，與官方全鏈(runStrategy→calcOrders→calcOrdersSummary)對應欄位嚴格相等
 觸發語義與runStrategy等價: 任一cond序列於該棒缺值(NaN)即整棒跳過(等同僅於全部cond序列皆有值之共同時間點判斷)、'and'組須全真且'or'組至少一真、sym為'&gt;'比大於否則比小於
 序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw
-evaluate之settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，與runStrategy之settings.unit同義；未給(undefined或null)unit時行為與輸出不變；unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時throw，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以摘要自行比較</p>
+evaluate之settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，與runStrategy之settings.unit同義；未給(undefined或null)unit時行為與輸出不變；unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時throw，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以摘要自行比較
+evaluate之settings之數值欄(uIni、uTrade為正數，rFee為非負數)與input之tp、sl(正數)及opt.tpsls之{tp,sl}收數字或數字字串並轉為Number(與runStrategy同一檢測函數，其後只用轉換值，給數字字串與給數字之摘要與訂單逐位相同)；給了(非undefined與null)而無效即throw、不改用預設(訊息如<code>invalid settings.uIni: must be a positive number</code>、<code>invalid tp: must be a positive number</code>、<code>invalid opt.tpsls[索引].tp: must be a positive number</code>，不含輸入值)，且先於任何進場；settings之uIni、uTrade、rFee未給(undefined或null)取預設；未給之tp或sl仍由genKLinesTpSl throw；settings給unit時不使用uTrade，不檢；settings之rTakeProfit與rStopLoss於evaluate不使用(以input.tp與input.sl為準)，不檢
+evaluate之settings給intervalSec(每根K線之秒數)與timeBasis(時間口徑)時原樣交給calcOrdersSummarySimple，與runStrategy之settings同義：timeBasis為'span'(須同時給intervalSec)時btDays計至末根收盤，btYears與等效年化隨之改變；未給或'open'時行為與輸出不變，只給intervalSec亦不變；不檢查intervalSec與K線之實際間距(不符時'span'之btDays失真)；intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、timeBasis給了而非'open'或'span'、timeBasis為'span'而未給intervalSec時throw，且先於任何進場</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="buildStrategyFastSession.mjs.html">buildStrategyFastSession.mjs</a>, <a href="buildStrategyFastSession.mjs.html#line65">line 65</a>
+        <a href="buildStrategyFastSession.mjs.html">buildStrategyFastSession.mjs</a>, <a href="buildStrategyFastSession.mjs.html#line74">line 74</a>
     </li></ul></dd>
     
 
@@ -1283,7 +1292,7 @@ console.log(sm.numTrade, sm.rWin, sm.uEquityFinal)
 
         
 <div class="param-desc">
-    <p>回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)與unit(依基礎單位定每單名義，預設不使用)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)</p>
+    <p>回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)、unit(依基礎單位定每單名義，預設不使用)、intervalSec(每根K線之秒數，預設不給)與timeBasis(時間口徑'open'或'span'，預設'open')，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)</p>
 </div>
 
 
@@ -1704,6 +1713,458 @@ console.log(calcBaseUnitQuantity('2001', { stepSize: '0.001', minQty: '0.001', m
 
     
 
+    <h4 class="name" id="calcBtDays"><span class="type-signature"></span>calcBtDays<span class="signature">(ott, timeOhlcStart, timeOhlcEnd, bt)</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算回測天數btDays(內部用, 不入聚合入口與文件)；calcOrdersSummary與calcOrdersSummarySimple共用，使兩者之btDays逐位相同</p>
+<p>bt.timeBasis為'open'時為首根與末根開盤時刻標籤之日差(dayjs之diff以'day'截斷，現行)；為'span'時計至末根收盤(末根開盤加bt.intervalSec秒)，即首根開盤至末根收盤之整日數(截斷)
+'span'時timeOhlcEnd須為末根K線之開盤時刻(若傳入窗之結束時刻而非末根開盤，會多算一根)；不足1日之窗為0(年化與等效年化為0)</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="barTime.mjs.html">barTime.mjs</a>, <a href="barTime.mjs.html#line82">line 82</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(calcBtDays(ott, '2022-07-01T00:00:00', '2025-04-08T00:00:00', { intervalSec: 86400, timeBasis: 'span' }))
+// => 1013</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入時區時間函數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入首根開盤時刻字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeOhlcEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入末根開盤時刻字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>bt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入parseBarTime之回傳物件</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳回測天數</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Number</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="calcDayHoldSpan"><span class="type-signature"></span>calcDayHoldSpan<span class="signature">(ott, timeStart, timeEnd)</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>計算timeBasis為'span'時之持倉天數(內部用, 不入聚合入口與文件)</p>
+<p>進場於進場棒收盤(timeStart加每根時長)、出場至遲於出場棒收盤(timeEnd加每根時長)，兩者之差等於兩開盤時刻標籤之差；以日計(dayjs之diff以'day'取小數)、無條件進位、至少1日
+為經過之時長而非根數: 日線無缺根時持k根即k日，有缺根時為經過之日數</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="barTime.mjs.html">barTime.mjs</a>, <a href="barTime.mjs.html#line107">line 107</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(calcDayHoldSpan(ott, '2022-07-01T20:00:00', '2022-07-02T00:00:00'))
+// => 1</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ott</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入時區時間函數</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入進場棒之開盤時刻字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入出場棒之開盤時刻字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳持倉天數</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Number</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="calcOrders"><span class="type-signature type-signature-async">(async) </span>calcOrders<span class="signature">(arrOhlc, orders, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
@@ -2075,7 +2536,7 @@ calcOrders(arrOhlc, orders, { uIni: 1000 })
 
     
 
-    <h4 class="name" id="calcOrdersRatio"><span class="type-signature"></span>calcOrdersRatio<span class="signature">(ott, orders)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+    <h4 class="name" id="calcOrdersRatio"><span class="type-signature"></span>calcOrdersRatio<span class="signature">(ott, orders, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Array}</span></h4>
 
     
 
@@ -2087,6 +2548,8 @@ calcOrders(arrOhlc, orders, { uIni: 1000 })
     <dt class="tag-description">Description:</dt>
     <dd class="tag-description"><ul class="dummy"><li><p>計算各已平倉訂單之持倉天數與等效日盈虧比例</p>
 <p>dayHold以timeStart與timeEnd之日期差+1計算，rProfitOrLossDay為(1+rProfitOrLoss)^(1/dayHold)-1
+opt.timeBasis為'span'(須同時給opt.intervalSec)時dayHold改為進場棒收盤至出場棒收盤之時長(以日計、無條件進位、至少1日；為經過之時長而非根數，日線無缺根時持k根即k日，有缺根時為經過之日數)；未給或'open'時不變，只給opt.intervalSec亦不變
+opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時throw，且先於改寫任何訂單
 modeResult非有效字串(未平倉)之訂單不計算</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
@@ -2094,7 +2557,7 @@ modeResult非有效字串(未平倉)之訂單不計算</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="calcOrdersRatio.mjs.html">calcOrdersRatio.mjs</a>, <a href="calcOrdersRatio.mjs.html#line35">line 35</a>
+        <a href="calcOrdersRatio.mjs.html">calcOrdersRatio.mjs</a>, <a href="calcOrdersRatio.mjs.html#line51">line 51</a>
     </li></ul></dd>
     
 
@@ -2155,7 +2618,17 @@ console.log(orders[0])
 //   rProfitOrLoss: 0.331,
 //   dayHold: 3,
 //   rProfitOrLossDay: 0.10000000000000009
-// }</code></pre>
+// }
+
+//日線(每根86400秒)以timeBasis為'span'計: 次根出場持倉1日(未給時為日期差+1之2日)
+let ordersDay = calcOrdersRatio(ott, [{
+    modeResult: 'profit',
+    timeStart: '2020-01-01T00:00:00',
+    timeEnd: '2020-01-02T00:00:00',
+    rProfitOrLoss: 0.05,
+}], { intervalSec: 86400, timeBasis: 'span' })
+console.log(ordersDay[0].dayHold, ordersDay[0].rProfitOrLossDay)
+// => 1 0.050000000000000044</code></pre>
 
 
 
@@ -2173,7 +2646,11 @@ console.log(orders[0])
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
+        
+        <th>Default</th>
         
 
         <th class="last">Description</th>
@@ -2199,7 +2676,19 @@ console.log(orders[0])
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
@@ -2223,10 +2712,175 @@ console.log(orders[0])
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入已結算訂單陣列，各元素需含modeResult、timeStart、timeEnd、rProfitOrLoss欄位</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -2279,7 +2933,7 @@ console.log(orders[0])
 
     
 
-    <h4 class="name" id="calcOrdersSummary"><span class="type-signature"></span>calcOrdersSummary<span class="signature">(ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name" id="calcOrdersSummary"><span class="type-signature"></span>calcOrdersSummary<span class="signature">(ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
 
     
 
@@ -2292,14 +2946,16 @@ console.log(orders[0])
     <dd class="tag-description"><ul class="dummy"><li><p>統計全部訂單之回測摘要</p>
 <p>統計交易次數、勝率、最大回撤、最大持倉、夏普值、最終權益與各盈虧比例等欄位
 訂單需先經calcOrders結算(含uEquity)與calcOrdersRatio計算(含dayHold與rProfitOrLossDay，夏普值計算所需)
-uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw</p>
+btDays為timeOhlcStart至timeOhlcEnd(首根與末根K線之開盤時刻)之日差(截斷為整數)，btYears為btDays/365，年化與等效年化以btYears換算；夏普值為dayHold加權之日盈虧比例平均除以加權標準差再乘sqrt(252)
+opt.timeBasis為'span'(須同時給opt.intervalSec)時btDays計至末根收盤(timeOhlcEnd加opt.intervalSec秒)，btYears、年化、等效年化隨之改變；未給或'open'時不變，只給opt.intervalSec亦不變；夏普值之年化因子不隨之改變；'span'時timeOhlcEnd須為末根K線之開盤時刻(傳入窗之結束時刻會多算一根)；不檢查opt.intervalSec與K線之實際間距(不符時btDays失真)
+uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw；opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時throw</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="calcOrdersSummary.mjs.html">calcOrdersSummary.mjs</a>, <a href="calcOrdersSummary.mjs.html#line76">line 76</a>
+        <a href="calcOrdersSummary.mjs.html">calcOrdersSummary.mjs</a>, <a href="calcOrdersSummary.mjs.html#line82">line 82</a>
     </li></ul></dd>
     
 
@@ -2406,7 +3062,11 @@ console.log(summary)
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
+        
+        <th>Default</th>
         
 
         <th class="last">Description</th>
@@ -2432,7 +3092,19 @@ console.log(summary)
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)</p></td>
@@ -2456,7 +3128,19 @@ console.log(summary)
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入初始資金正數</p></td>
@@ -2480,7 +3164,19 @@ console.log(summary)
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入已結算訂單陣列</p></td>
@@ -2504,7 +3200,19 @@ console.log(summary)
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入回測起始秒時間字串</p></td>
@@ -2528,10 +3236,175 @@ console.log(summary)
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last"><p>輸入回測結束秒時間字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -2596,7 +3469,9 @@ console.log(summary)
     <dt class="tag-description">Description:</dt>
     <dd class="tag-description"><ul class="dummy"><li><p>統計全部訂單之精簡版回測摘要</p>
 <p>為calcOrdersSummary之精簡版，只算選股熱路徑所需欄位，純迴圈實作且不需先跑calcOrdersRatio
-對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear
+對應欄位與完整版bit-exact: numTrade、numTradeFin、rWin、uTradeAllMax、rTradeAllMax、uEquityFinal、btDays、btYears、rEquivalentCumuProfitOrLossFinalNormYear(給相同之opt.intervalSec與opt.timeBasis時亦然)
+opt.timeBasis為'span'(須同時給opt.intervalSec)時btDays計至末根收盤(timeOhlcEnd加opt.intervalSec秒)，btYears與等效年化隨之改變(timeOhlcEnd須為末根K線之開盤時刻，傳入窗之結束時刻會多算一根；不檢查opt.intervalSec與K線之實際間距，不符時btDays失真)；未給或'open'時不變，只給opt.intervalSec亦不變
+opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時throw
 不算drawdown、夏普值與累計曲線</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
@@ -2604,7 +3479,7 @@ console.log(summary)
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="calcOrdersSummarySimple.mjs.html">calcOrdersSummarySimple.mjs</a>, <a href="calcOrdersSummarySimple.mjs.html#line70">line 70</a>
+        <a href="calcOrdersSummarySimple.mjs.html">calcOrdersSummarySimple.mjs</a>, <a href="calcOrdersSummarySimple.mjs.html#line75">line 75</a>
     </li></ul></dd>
     
 
@@ -2998,6 +3873,89 @@ console.log(summary)
         </tr>
 
     
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
     </tbody>
 </table>
 
@@ -3067,14 +4025,15 @@ console.log(summary)
     <dd class="tag-description"><ul class="dummy"><li><p>基於全部交易單重算累積收益並統計回測摘要</p>
 <p>依timeStart排序後重算各已平倉單之uEquity、uCumuProfitOrLoss與rCumuProfitOrLoss(多策略各自結算後合併重算用)
 再執行calcOrdersRatio與calcOrdersSummary，並附加timeTest、timeOhlcStart、timeOhlcEnd、uIni欄位
-uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject</p>
+opt.intervalSec與opt.timeBasis原樣交給calcOrdersRatio與calcOrdersSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計，timeOhlcEnd須為末根K線之開盤時刻，見兩函數)
+uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject；opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時reject，且先於改寫任何訂單</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="calcSummary.mjs.html">calcSummary.mjs</a>, <a href="calcSummary.mjs.html#line76">line 76</a>
+        <a href="calcSummary.mjs.html">calcSummary.mjs</a>, <a href="calcSummary.mjs.html#line80">line 80</a>
     </li></ul></dd>
     
 
@@ -3413,7 +4372,120 @@ console.log(summary)
                 </td>
             
 
-            <td class="description last"><p>輸入設定物件，預設{}</p></td>
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -3479,14 +4551,16 @@ console.log(summary)
     <dd class="tag-description"><ul class="dummy"><li><p>結算下單清單並輸出訂單、摘要與報告檔案</p>
 <p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，依timeOhlcStart至timeOhlcEnd範圍取keyOhlc之K線序列
 經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
-fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject</p>
+區間檢查: 未給opt.intervalSec時timeOhlcStart至timeOhlcEnd之時數(截斷為整數小時)須為4之倍數；給opt.intervalSec時兩者相差之毫秒數須為opt.intervalSec×1000之整數倍(1小時、日線等任何週期；不檢查與K線資料之實際間距)，不合即reject(訊息為<code>invalid timeOhlcEnd: must be timeOhlcStart plus a multiple of 4 hours</code>或<code>… of opt.intervalSec seconds</code>)
+opt.intervalSec與opt.timeBasis另交給calcSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計，見calcOrdersRatio與calcOrdersSummary；此時timeOhlcEnd須為末根K線之開盤時刻，傳入窗之結束時刻會多算一根)；未給或'open'時摘要不變，只給opt.intervalSec亦不變
+fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或區間檢查不合、opt.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給opt.intervalSec時reject，且先於讀取數據與寫檔</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="closeAndSummaryOrders.mjs.html">closeAndSummaryOrders.mjs</a>, <a href="closeAndSummaryOrders.mjs.html#line75">line 75</a>
+        <a href="closeAndSummaryOrders.mjs.html">closeAndSummaryOrders.mjs</a>, <a href="closeAndSummaryOrders.mjs.html#line80">line 80</a>
     </li></ul></dd>
     
 
@@ -4102,6 +5176,89 @@ console.log(fs.readdirSync('./result'))
         </tr>
 
     
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如1hr為3600、4hr為14400、1day為86400)，預設null(未給，區間檢查為4小時之倍數)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
     </tbody>
 </table>
 
@@ -4551,14 +5708,15 @@ console.log(Array.from(r.pnl))
     <dd class="tag-description"><ul class="dummy"><li><p>由orders.json產製績效html報表</p>
 <p>讀取orders.json(已結算訂單陣列)後，經calcSummary統計摘要，再以genReportCore產出html報表
 訂單須為已結算形(含uProfitOrLoss、uEquity等欄位)，未結算單(timeEnd為空)仍可計算，計入summary.numTradeUnsettled
-fpOrders非有效字串或非檔案、內容非有效陣列時throw</p>
+opt.intervalSec與opt.timeBasis原樣交給calcSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計；btDays計至timeOhlcEnd加opt.intervalSec，未給opt.timeOhlcEnd時其推得值為最晚出場棒之開盤時刻，未平倉單取其進場棒之開盤時刻)；未給或'open'時不變，只給opt.intervalSec亦不變
+fpOrders非有效字串或非檔案、內容非有效陣列時throw；opt.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給opt.intervalSec時throw，且先於讀取orders.json與寫檔</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="genReport.mjs.html">genReport.mjs</a>, <a href="genReport.mjs.html#line68">line 68</a>
+        <a href="genReport.mjs.html">genReport.mjs</a>, <a href="genReport.mjs.html#line72">line 72</a>
     </li></ul></dd>
     
 
@@ -5011,6 +6169,89 @@ fpOrders非有效字串或非檔案、內容非有效陣列時throw</p>
         </tr>
 
     
+
+        <tr>
+            
+                <td class="name"><code>intervalSec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+|
+
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timeBasis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'open'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'</p></td>
+        </tr>
+
+    
     </tbody>
 </table>
 
@@ -5438,6 +6679,879 @@ console.log(orders[0].priceStart, orders[0].priceEnd, orders[0].uProfitOrLoss, o
 
     
 
+    <h4 class="name" id="parseBarTime"><span class="type-signature"></span>parseBarTime<span class="signature">(obj, name<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>解析並檢測每根K線之時長與時間口徑選項(不入聚合入口; 他套件可經深層路徑取用: import parseBarTime from 'w-trade-backtest/src/barTime.mjs', 或具名匯入{ parseBarTime })</p>
+<p>供runStrategy與快速評估之settings、runStrategies之各策略settings、calcOrdersRatio、calcOrdersSummary、calcOrdersSummarySimple、calcSummary、closeAndSummaryOrders、genReport之opt共用，避免各路徑各自解讀選項；呼叫端(如求解)可先以之檢測再把轉型後之值寫入策略之settings
+intervalSec為每根K線之秒數，須為有效整數(wsemi iseint，數字或整數字串，同本套件units之慣例)、為60之倍數且介於60與31536000(365日)之間，通過即以cint轉為Number；undefined或null為未給(回傳null)
+timeBasis為時間口徑，'open'為以K線開盤時刻標籤計(現行)，'span'為計入每根K線之時距(持倉時間為進場棒收盤至出場棒收盤，回測期間為首根開盤至末根收盤)；undefined或null視同'open'；'span'須同時給intervalSec
+給了而無效即throw(訊息為<code>invalid ${name}.intervalSec: must be a positive integer multiple of 60 up to 31536000</code>、<code>invalid ${name}.timeBasis: must be one of 'open', 'span'</code>、<code>invalid ${name}.intervalSec: must be a positive integer multiple of 60 up to 31536000 when ${name}.timeBasis is 'span'</code>，不含輸入值)，不改用預設(影響口徑之選項，同跨套件規格〈輸入參數之檢測機制〉§11「決定資料口徑之opt」)；不改寫呼叫端之物件
+不檢查intervalSec與K線資料之實際間距(不符時'span'之回測天數與closeAndSummaryOrders之區間檢查失真，持倉天數不受影響)
+obj為undefined或null視為未給兩選項</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="barTime.mjs.html">barTime.mjs</a>, <a href="barTime.mjs.html#line30">line 30</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(parseBarTime({ intervalSec: '86400', timeBasis: 'span' }, 'settings'))
+// => { intervalSec: 86400, timeBasis: 'span' }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>obj</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入含intervalSec與timeBasis之物件(settings或opt)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'opt'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入錯誤訊息所用之名稱字串，預設'opt'</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳{intervalSec,timeBasis}，intervalSec為整數或null，timeBasis為'open'或'span'</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="parseNum"><span class="type-signature"></span>parseNum<span class="signature">(v, kind, name, sub<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {*}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>解析並檢測單一數值(內部用, 不入聚合入口與文件)</p>
+<p>v為undefined或null視為未給, 原樣回傳(由呼叫端決定取預設或維持原行為)；給了須為有效數字(wsemi isenum，數字或數字字串，去頭尾空白後轉換，同本套件unit之慣例)且符合kind('p'為大於0、'n'為大於等於0)，否則throw(訊息為<code>invalid ${name}: must be a positive number</code>或<code>… a non-negative number</code>，不含輸入值)
+通過者數字原樣回傳(含-0，輸出逐位不變)，數字字串以cdbl轉為Number，其後呼叫端只用轉換值
+數字之判定與isenum相同(有限且依kind之範圍)，另以直接比較先行(快速評估之熱路徑免經isenum與字串組合)；訊息之名稱於throw時才組合</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="parseSettings.mjs.html">parseSettings.mjs</a>, <a href="parseSettings.mjs.html#line43">line 43</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(parseNum(' 1000 ', 'p', 'settings.uIni'))
+// => 1000</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>v</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>輸入值</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>kind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>輸入種類字串，'p'(正數)或'n'(非負數)</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>輸入錯誤訊息所用之名稱字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>sub</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>輸入欄名字串，給了則訊息之名稱為<code>${name}.${sub}</code></p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳未給之原值(undefined或null)或轉換後之Number</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">*</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="parseSettingsNum"><span class="type-signature"></span>parseSettingsNum<span class="signature">(st, name<span class="signature-attributes">opt</span>, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+    
+    <dt class="tag-description">Description:</dt>
+    <dd class="tag-description"><ul class="dummy"><li><p>解析並檢測settings之數值欄(內部用, 不入聚合入口與文件)</p>
+<p>供runStrategy與快速評估之settings、runStrategies之各策略settings共用，使各入口之檢測與轉型一致
+數值欄為uIni(正數)、uTrade(正數)、rTakeProfit(正數)、rStopLoss(正數)、rFee(非負數)，給了(非undefined與null)而無效即throw、不改用預設；通過即轉為Number(數字原樣、數字字串經cdbl)，其後只用回傳之轉換值；未給(undefined或null)者原樣回傳，由呼叫端取預設或維持原行為
+opt.keys指定要檢測之欄(預設全部五欄)；opt.skipUTrade為true時uTrade不檢測而原樣回傳(settings給unit時各單名義依基礎單位，不使用uTrade)
+st非物件(undefined、null、字串等)視為各欄皆未給；各欄只讀取一次，不改寫呼叫端之物件</p></li></ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="parseSettings.mjs.html">parseSettings.mjs</a>, <a href="parseSettings.mjs.html#line80">line 80</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+    <h5 class="h5-examples">Example</h5>
+    
+    <pre class="prettyprint"><code>console.log(parseSettingsNum({ uIni: '1000', uTrade: 100, rFee: ' 0.0005 ' }, 'settings', { keys: ['uIni', 'uTrade', 'rFee'] }))
+// => { uIni: 1000, uTrade: 100, rFee: 0.0005 }</code></pre>
+
+
+
+
+    <h5 class="h5-parameters">Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>st</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入settings物件</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>'settings'</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入錯誤訊息所用之名稱字串，預設'settings'</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>{}</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入設定物件，預設{}</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>keys</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入要檢測之欄名陣列，預設全部五欄</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>skipUTrade</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>false</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入是否略過uTrade之檢測布林值，預設false</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5 class="h5-returns">Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>回傳物件，內含opt.keys各欄之轉換值(未給者為原值)</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="runStrategies"><span class="type-signature type-signature-async">(async) </span>runStrategies<span class="signature">(ott, strategies, funGetSeries, opt<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
@@ -5453,14 +7567,16 @@ console.log(orders[0].priceStart, orders[0].priceEnd, orders[0].uProfitOrLoss, o
 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
 個別策略執行失敗(如時間點無參數無法下單)時強制略過
 各策略settings給unit({rule,buffer,units}，見calcBaseUnitQuantity與runStrategy)時各單名義依基礎單位；unit給了而無效時先於任何策略之執行即reject(不被上述個別策略之略過吞掉，以免無效之下單單位使該策略被靜默略過)，訊息為<code>invalid strategies[索引].settings.unit…</code>；未給(undefined或null)時行為不變
-合併摘要之本金為各策略settings.uIni之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較</p>
+各策略settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss、rFee，判準見runStrategy)收數字或數字字串並轉為Number，與runStrategy同一檢測函數；給了而無效時先於任何策略之執行即reject(訊息為<code>invalid strategies[索引].settings.uIni: must be a positive number</code>等)，不被上述個別策略之略過吞掉；uIni為數字字串者以轉換值計入本金(不再因非數字而被靜默略過)；未給(undefined或null)者行為不變
+合併摘要之本金為各策略settings.uIni(轉換值)之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較
+各策略settings可給intervalSec(每根K線之秒數)與timeBasis(時間口徑，見runStrategy)，合併摘要依之計算；各策略之intervalSec與timeBasis須相同(未給者視為null與'open')，給了而無效或各策略不同時先於任何策略之執行即reject，訊息為<code>invalid strategies[索引].settings.intervalSec…</code>或<code>invalid strategies[索引].settings.timeBasis…</code>(不同者為<code>… must be the same for all strategies</code>)；皆未給時行為不變</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategies.mjs.html">runStrategies.mjs</a>, <a href="runStrategies.mjs.html#line83">line 83</a>
+        <a href="runStrategies.mjs.html">runStrategies.mjs</a>, <a href="runStrategies.mjs.html#line87">line 87</a>
     </li></ul></dd>
     
 
@@ -5904,14 +8020,16 @@ console.log(rr.summary.uIni, rr.summary.numTrade, rr.summary.rWin)
 <p>以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，建立timeStart至timeEnd範圍之序列查詢函數後執行runStrategies
 合併結果命名為'全部策略'，並輸出orders.json、summary.json、report.html至fdTest資料夾
 fdOhlc或fdParam非資料夾、strategies非有效陣列時throw
-strategies各元素之settings可含unit(依基礎單位定每單名義，見runStrategies與calcBaseUnitQuantity)，unit給了而無效時先於任何策略之執行即reject</p>
+strategies各元素之settings可含unit(依基礎單位定每單名義，見runStrategies與calcBaseUnitQuantity)，unit給了而無效時先於任何策略之執行即reject
+strategies各元素之settings可含intervalSec與timeBasis(每根時長與時間口徑，見runStrategy與runStrategies)，各策略須相同，給了而無效或各策略不同時先於任何策略之執行與寫檔即reject
+strategies各元素之settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss、rFee)收數字或數字字串並轉為Number，給了而無效時同樣先於任何策略之執行與寫檔即reject(見runStrategies)；本函數先讀取數據(建立序列查詢函數)再檢測，不寫檔</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategiesAndBacktest.mjs.html">runStrategiesAndBacktest.mjs</a>, <a href="runStrategiesAndBacktest.mjs.html#line75">line 75</a>
+        <a href="runStrategiesAndBacktest.mjs.html">runStrategiesAndBacktest.mjs</a>, <a href="runStrategiesAndBacktest.mjs.html#line77">line 77</a>
     </li></ul></dd>
     
 
@@ -6495,14 +8613,16 @@ strategies各元素之settings可含unit(依基礎單位定每單名義，見run
 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
 僅於全部conds序列皆有值之共同時間點判斷觸發
 settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，其餘算式不變；未給(undefined或null)unit時行為與輸出不變
-strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時reject，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較</p>
+settings給intervalSec(每根K線之秒數)與timeBasis(時間口徑)時交給calcOrdersRatio與calcOrdersSummary：timeBasis為'span'(須同時給intervalSec)時dayHold為進場棒收盤至出場棒收盤之時長(日，無條件進位，至少1日)、btDays計至末根收盤，rProfitOrLossDay、rSharpe、btYears、年化與等效年化隨之改變；未給或'open'時行為與輸出不變，只給intervalSec亦不變；摘要不回寫此二選項；不檢查intervalSec與K線之實際間距(不符時'span'之btDays失真)
+settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss為正數，rFee為非負數)收數字或數字字串(去頭尾空白後轉換，同unit之慣例)，通過即轉為Number且其後只用轉換值(給數字字串與給數字之訂單與摘要逐位相同，不再以原字串運算而使摘要靜默失真)；給了(非undefined與null)而無效即reject、不改用預設(訊息如<code>invalid settings.uIni: must be a positive number</code>，不含輸入值)；數值之0(正數欄)、負數、Infinity與NaN亦為無效(先前不檢而靜默產生失真之摘要)；未給(undefined或null)者維持原行為；settings給unit時不使用uTrade，不檢
+strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)、settings之數值欄給了而無效、settings.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、settings.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給intervalSec時reject，且先於任何進場與讀取數據；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較</p>
 <p>Unit Test: <a href="https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs">Github</a></p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="runStrategy.mjs.html">runStrategy.mjs</a>, <a href="runStrategy.mjs.html#line84">line 84</a>
+        <a href="runStrategy.mjs.html">runStrategy.mjs</a>, <a href="runStrategy.mjs.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -6690,7 +8810,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
                 </td>
             
 
-            <td class="description last"><p>輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit)欄位</p></td>
+            <td class="description last"><p>輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit、intervalSec與timeBasis)欄位</p></td>
         </tr>
 
     
@@ -7207,7 +9327,7 @@ console.log(r.summary.numTrade, r.summary.rWin, r.summary.uEquityFinal)
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 17:30:39 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 23:30:37 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

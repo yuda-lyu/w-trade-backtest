@@ -1,0 +1,98 @@
+import isenum from 'wsemi/src/isenum.mjs'
+import cdbl from 'wsemi/src/cdbl.mjs'
+
+
+//settings之數值欄(皆影響金額, 給了而無效即拒絕, 不改用預設, 見跨套件規格〈輸入參數之檢測機制〉§11「影響下單數量或金額之opt」): 'p'為正數(大於0), 'n'為非負數(大於等於0)
+let KINDS = {
+    uIni: 'p', //初始資金
+    uTrade: 'p', //每次下單金額
+    rTakeProfit: 'p', //止盈比例
+    rStopLoss: 'p', //止損比例
+    rFee: 'n', //手續費比例
+}
+let DESCS = {
+    p: 'a positive number',
+    n: 'a non-negative number',
+}
+
+//isenum之範圍選項(模組層常數, 熱路徑不逐次配置物件)與全部欄名
+let GT0 = { gt: 0 }
+let MIN0 = { min: 0 }
+let ALL_KEYS = Object.keys(KINDS)
+
+
+/**
+ * 解析並檢測單一數值(內部用, 不入聚合入口與文件)
+ *
+ * v為undefined或null視為未給, 原樣回傳(由呼叫端決定取預設或維持原行為)；給了須為有效數字(wsemi isenum，數字或數字字串，去頭尾空白後轉換，同本套件unit之慣例)且符合kind('p'為大於0、'n'為大於等於0)，否則throw(訊息為`invalid ${name}: must be a positive number`或`… a non-negative number`，不含輸入值)
+ * 通過者數字原樣回傳(含-0，輸出逐位不變)，數字字串以cdbl轉為Number，其後呼叫端只用轉換值
+ * 數字之判定與isenum相同(有限且依kind之範圍)，另以直接比較先行(快速評估之熱路徑免經isenum與字串組合)；訊息之名稱於throw時才組合
+ *
+ * @function
+ * @param {*} v 輸入值
+ * @param {String} kind 輸入種類字串，'p'(正數)或'n'(非負數)
+ * @param {String} name 輸入錯誤訊息所用之名稱字串
+ * @param {String} [sub] 輸入欄名字串，給了則訊息之名稱為`${name}.${sub}`
+ * @returns {*} 回傳未給之原值(undefined或null)或轉換後之Number
+ * @example
+ *
+ * console.log(parseNum(' 1000 ', 'p', 'settings.uIni'))
+ * // => 1000
+ *
+ */
+let parseNum = (v, kind, name, sub) => {
+    if (v === undefined || v === null) {
+        return v
+    }
+    if (typeof v === 'number') {
+        if (v < Infinity && (kind === 'p' ? v > 0 : v >= 0)) {
+            return v
+        }
+    }
+    else if (isenum(v, kind === 'p' ? GT0 : MIN0)) {
+        return cdbl(v)
+    }
+    throw new Error(`invalid ${sub === undefined ? name : `${name}.${sub}`}: must be ${DESCS[kind]}`)
+}
+
+
+/**
+ * 解析並檢測settings之數值欄(內部用, 不入聚合入口與文件)
+ *
+ * 供runStrategy與快速評估之settings、runStrategies之各策略settings共用，使各入口之檢測與轉型一致
+ * 數值欄為uIni(正數)、uTrade(正數)、rTakeProfit(正數)、rStopLoss(正數)、rFee(非負數)，給了(非undefined與null)而無效即throw、不改用預設；通過即轉為Number(數字原樣、數字字串經cdbl)，其後只用回傳之轉換值；未給(undefined或null)者原樣回傳，由呼叫端取預設或維持原行為
+ * opt.keys指定要檢測之欄(預設全部五欄)；opt.skipUTrade為true時uTrade不檢測而原樣回傳(settings給unit時各單名義依基礎單位，不使用uTrade)
+ * st非物件(undefined、null、字串等)視為各欄皆未給；各欄只讀取一次，不改寫呼叫端之物件
+ *
+ * @function
+ * @param {Object} st 輸入settings物件
+ * @param {String} [name='settings'] 輸入錯誤訊息所用之名稱字串，預設'settings'
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Array} [opt.keys] 輸入要檢測之欄名陣列，預設全部五欄
+ * @param {Boolean} [opt.skipUTrade=false] 輸入是否略過uTrade之檢測布林值，預設false
+ * @returns {Object} 回傳物件，內含opt.keys各欄之轉換值(未給者為原值)
+ * @example
+ *
+ * console.log(parseSettingsNum({ uIni: '1000', uTrade: 100, rFee: ' 0.0005 ' }, 'settings', { keys: ['uIni', 'uTrade', 'rFee'] }))
+ * // => { uIni: 1000, uTrade: 100, rFee: 0.0005 }
+ *
+ */
+let parseSettingsNum = (st, name = 'settings', opt = {}) => {
+    let keys = Array.isArray(opt.keys) ? opt.keys : ALL_KEYS
+    let skipUTrade = opt.skipUTrade === true
+    let src = (st !== null && typeof st === 'object') ? st : {}
+    let r = {}
+    for (let k of keys) {
+        let v = src[k]
+        r[k] = (k === 'uTrade' && skipUTrade) ? v : parseNum(v, KINDS[k], name, k)
+    }
+    return r
+}
+
+
+//isGiven, 是否給了(非undefined與null; 內部用, 不入文件)
+let isGiven = (v) => v !== undefined && v !== null
+
+
+export { parseNum, parseSettingsNum, isGiven }
+export default parseSettingsNum

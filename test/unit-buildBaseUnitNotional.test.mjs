@@ -218,6 +218,67 @@ describe('buildBaseUnitNotional', function() {
         assert.deepStrictEqual({ ...unit }, { rule, buffer: '0.1', units: '2' })
     })
 
+    it('R-BU-06: 回傳轉型後之unit({rule:{stepSize,minQty,minNotional},buffer,units}, 皆為Number, 未給之buffer與units為預設), 數字字串與數字輸入之unit相同, 可再傳入得同一key', function() {
+        //R-BU-06: 下游(如求解與策略檔)可直接取用轉型後之選項, 不必自行轉型
+        let bn = buildBaseUnitNotional({ rule: RA, buffer: 0.25, units: 3 })
+        assert.deepStrictEqual(bn.unit, { rule: { stepSize: 0.001, minQty: 0.001, minNotional: 20 }, buffer: 0.25, units: 3 })
+        let bs = buildBaseUnitNotional({ rule: { stepSize: '0.001', minQty: ' 1e-3 ', minNotional: '20.0' }, buffer: '.25', units: ' 3 ' })
+        assert.deepStrictEqual(bs.unit, bn.unit)
+        assert.deepStrictEqual(Object.keys(bs.unit), ['rule', 'buffer', 'units'])
+        assert.deepStrictEqual(Object.keys(bs.unit.rule), ['stepSize', 'minQty', 'minNotional'])
+        for (let v of [bs.unit.buffer, bs.unit.units, bs.unit.rule.stepSize, bs.unit.rule.minQty, bs.unit.rule.minNotional]) {
+            assert.strictEqual(typeof v, 'number')
+        }
+        //未給(undefined、null、整個省略)之buffer與units以預設0.1與1填入
+        for (let u of [{ rule: RA }, { rule: RA, buffer: null, units: null }, { rule: RA, buffer: undefined, units: undefined }]) {
+            assert.deepStrictEqual(buildBaseUnitNotional(u).unit, { rule: { ...RA }, buffer: 0.1, units: 1 })
+        }
+        //再傳入: 同一key, 同一名義(10個價格)
+        for (let b of [bn, bs, buildBaseUnitNotional({ rule: RA })]) {
+            let b2 = buildBaseUnitNotional(b.unit)
+            assert.strictEqual(b2.key, b.key)
+            assert.deepStrictEqual(b2.unit, b.unit)
+            for (let p of [1999, 2000, 4399, 55000, 0.5, 123456.789, 1, 3, 77, 1234.5]) {
+                assert.strictEqual(b2.getNotional(p), b.getNotional(p), `price ${p}`)
+            }
+        }
+        //JSDoc之例
+        assert.deepStrictEqual(buildBaseUnitNotional({ rule: { stepSize: '0.001', minQty: ' 0.001 ', minNotional: '20' }, units: '2' }).unit, { rule: { stepSize: 0.001, minQty: 0.001, minNotional: 20 }, buffer: 0.1, units: 2 })
+    })
+
+    it('R-BU-06: 每次呼叫回傳新物件且與呼叫端之unit、與getNotional內部使用者互不共用(事後修改回傳之unit不影響getNotional, 凍結之輸入不被改寫)', function() {
+        let rule = Object.freeze({ stepSize: 0.001, minQty: 0.001, minNotional: 20 })
+        let input = Object.freeze({ rule, buffer: 0.25, units: 3 })
+        let bu = buildBaseUnitNotional(input)
+        let bu2 = buildBaseUnitNotional(input)
+        assert.notStrictEqual(bu.unit, input)
+        assert.notStrictEqual(bu.unit.rule, rule)
+        assert.notStrictEqual(bu.unit, bu2.unit)
+        assert.notStrictEqual(bu.unit.rule, bu2.unit.rule)
+        bu.getNotional(1999) //先算一個價格(快取)
+        bu.unit.rule.minNotional = 99999
+        bu.unit.rule.stepSize = 1
+        bu.unit.buffer = 5
+        bu.unit.units = 50
+        bu.unit.extra = 1
+        //修改後才首次計算之價格(未被快取)仍依建立時之選項: 與另建之同選項者相同
+        let ref = buildBaseUnitNotional(input)
+        for (let p of [2001, 3777.7, 5.5, 1999, 123456]) {
+            assert.strictEqual(bu.getNotional(p), ref.getNotional(p), `price ${p}`)
+        }
+        assert.strictEqual(bu.key, '0.001|0.001|20|0.25|3')
+        assert.deepStrictEqual(bu2.unit, { rule: { stepSize: 0.001, minQty: 0.001, minNotional: 20 }, buffer: 0.25, units: 3 }) //另一次呼叫之unit不受影響
+        assert.deepStrictEqual({ ...rule }, { stepSize: 0.001, minQty: 0.001, minNotional: 20 })
+    })
+
+    it('R-BU-06: 建立時之可計算性檢測為以價格1試算(通過者仍回傳unit, 價格較大才超出雙精度範圍者於getNotional throw)', function() {
+        //價格1之數量與名義可計算, 價格1e308時名義超出雙精度範圍
+        let bu = buildBaseUnitNotional({ rule: { stepSize: 1, minQty: 100, minNotional: 1 } }, 'opt.unit')
+        assert.deepStrictEqual(bu.unit, { rule: { stepSize: 1, minQty: 100, minNotional: 1 }, buffer: 0.1, units: 1 })
+        assert.strictEqual(bu.getNotional(2000), 200000)
+        assert.throws(() => bu.getNotional(1e308), { message: 'invalid price or rule: quantity and notional must be finite numbers' })
+    })
+
     describe('三路徑(runStrategy、快速評估、ordersFromBars)給選項: 36組隨機案', function() {
 
         let res = []

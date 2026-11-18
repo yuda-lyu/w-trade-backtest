@@ -11,6 +11,7 @@ import WDataTdprovide from 'w-data-tdprovide/src/WDataTdprovide.mjs'
 import calcOrders from './calcOrders.mjs'
 import calcSummary from './calcSummary.mjs'
 import genReportCore from './genReportCore.mjs'
+import { parseBarTime } from './barTime.mjs'
 
 
 /**
@@ -18,7 +19,9 @@ import genReportCore from './genReportCore.mjs'
  *
  * 以w-data-tdprovide讀取fdOhlc與fdParam資料夾數據，依timeOhlcStart至timeOhlcEnd範圍取keyOhlc之K線序列
  * 經calcOrders結算ordersSubmit與calcSummary統計後，輸出orders.json、summary.json、report.html至fdTest資料夾
- * fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或非4小時整數倍區間時reject
+ * 區間檢查: 未給opt.intervalSec時timeOhlcStart至timeOhlcEnd之時數(截斷為整數小時)須為4之倍數；給opt.intervalSec時兩者相差之毫秒數須為opt.intervalSec×1000之整數倍(1小時、日線等任何週期；不檢查與K線資料之實際間距)，不合即reject(訊息為`invalid timeOhlcEnd: must be timeOhlcStart plus a multiple of 4 hours`或`… of opt.intervalSec seconds`)
+ * opt.intervalSec與opt.timeBasis另交給calcSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計，見calcOrdersRatio與calcOrdersSummary；此時timeOhlcEnd須為末根K線之開盤時刻，傳入窗之結束時刻會多算一根)；未給或'open'時摘要不變，只給opt.intervalSec亦不變
+ * fdOhlc或fdParam非資料夾、uIni非正數、timeOhlcStart或timeOhlcEnd非有效字串或區間檢查不合、opt.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給opt.intervalSec時reject，且先於讀取數據與寫檔
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -35,6 +38,8 @@ import genReportCore from './genReportCore.mjs'
  * @param {Boolean} [opt.writeOrders=true] 輸入是否輸出orders.json布林值，預設true
  * @param {Boolean} [opt.writeSummary=true] 輸入是否輸出summary.json布林值，預設true
  * @param {Boolean} [opt.writeReport=true] 輸入是否輸出report.html布林值，預設true
+ * @param {Number|String} [opt.intervalSec=null] 輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如1hr為3600、4hr為14400、1day為86400)，預設null(未給，區間檢查為4小時之倍數)
+ * @param {String} [opt.timeBasis='open'] 輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'
  * @returns {Promise} 回傳Promise，無resolve值，於fdTest輸出結果檔案
  * @example
  *
@@ -99,24 +104,39 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
         throw new Error(`invalid fdTest[${fdTest}]`)
     }
 
+    //bt, 每根時長與時間口徑, 給了而無效於此throw(先於讀取數據與寫檔)
+    let bt = parseBarTime(opt, 'opt')
+
     let writeOrders = get(opt, 'writeOrders', true)
     let writeSummary = get(opt, 'writeSummary', true)
     let writeReport = get(opt, 'writeReport', true)
 
     let wdp = WDataTdprovide(fdOhlc, fdParam)
 
-    //td
+    //ts, te
     let ts = ott(timeOhlcStart)
     let te = ott(timeOhlcEnd)
-    let td = te.diff(ts, 'hour')
-    // console.log('td', td)
 
-    //m
-    let m = td / 4
-    if (m !== cint(m)) {
-        throw new Error(`timeOhlcStart[${timeOhlcStart}] to timeOhlcEnd[${timeOhlcEnd}] are not hour intervals`)
+    //區間檢查, 給intervalSec時兩時刻相差之毫秒數須為每根時長之整數倍, 未給時維持現行(截斷之時數須為4之倍數)
+    if (bt.intervalSec !== null) {
+        if ((te.valueOf() - ts.valueOf()) % (bt.intervalSec * 1000) !== 0) {
+            throw new Error(`invalid timeOhlcEnd: must be timeOhlcStart plus a multiple of opt.intervalSec seconds`)
+        }
     }
-    // console.log('m', m)
+    else {
+
+        //td
+        let td = te.diff(ts, 'hour')
+        // console.log('td', td)
+
+        //m
+        let m = td / 4
+        if (m !== cint(m)) {
+            throw new Error(`invalid timeOhlcEnd: must be timeOhlcStart plus a multiple of 4 hours`)
+        }
+        // console.log('m', m)
+
+    }
 
     //funGetSeries
     let funGetSeries = await wdp.buildGetTimeSeriesByTimeRange(timeOhlcStart, timeOhlcEnd)
@@ -130,7 +150,7 @@ let closeAndSummaryOrders = async (ott, fdOhlc, fdParam, uIni, timeOhlcStart, ti
     // console.log('ordersClose', ordersClose)
 
     //summary
-    let summary = await calcSummary(ott, uIni, ordersClose, timeOhlcStart, timeOhlcEnd)
+    let summary = await calcSummary(ott, uIni, ordersClose, timeOhlcStart, timeOhlcEnd, bt)
     console.log('summary', summary, size(ordersClose))
 
     //r

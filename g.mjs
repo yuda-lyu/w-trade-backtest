@@ -158,6 +158,30 @@ async function test() {
     })
     // => runStrategy(unit) summary: { uTradeAllMax: 22.042, uEquityFinal: 10000.394698 }
 
+    //settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss為正數, rFee為非負數)收數字或數字字串(去頭尾空白後轉換, 同unit之慣例), 通過即轉為Number後使用, 結果與給數字者逐位相同; 給了而無效時reject(訊息如`invalid settings.uIni: must be a positive number`, 不含輸入值), 且先於任何進場
+    let rStr = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { uIni: '1000', uTrade: ' 100 ', rTakeProfit: '0.05', rStopLoss: '0.03', rFee: '0.0005' } }, funGetSeries)
+    console.log('runStrategy(string settings):', rStr.summary.uIni, rStr.summary.uEquityFinal, JSON.stringify(rStr.orders) === JSON.stringify(r.orders))
+    // => runStrategy(string settings): 1000 1001.8 true
+
+    //settings.intervalSec與settings.timeBasis, 每根K線之秒數與時間口徑(K線之time為開盤時刻)
+    //  intervalSec須為60之倍數之正整數且不大於31536000(數字或整數字串), 無效時throw(訊息如`invalid settings.intervalSec: must be a positive integer multiple of 60 up to 31536000`, 不含輸入值); 只給intervalSec不改變任何績效數字
+    //  timeBasis為'span'(須同時給intervalSec)才依實際時點計: dayHold為進場棒收盤至出場棒收盤之經過日數(無條件進位, 至少1日), btDays計至末根收盤(末根開盤+intervalSec)
+    let arrOhlcDay = arrOhlc.map((v, i) => ({ ...v, time: `2020-01-0${i + 1}T00:00:00` })) //同上之價格改為6根日線
+    let arrSigDay = arrSig.map((v, i) => ({ ...v, time: arrOhlcDay[i].time }))
+    let funGetSeriesDay = async (key) => (key === 'btc' ? arrOhlcDay : arrSigDay)
+    let rOpen = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { ...strategy.settings, intervalSec: 86400 } }, funGetSeriesDay)
+    console.log('runStrategy(intervalSec):', rOpen.orders.map((o) => `${o.timeStart}->${o.timeEnd} dayHold=${o.dayHold}`), 'btDays:', rOpen.summary.btDays)
+    // => runStrategy(intervalSec): [
+    //   '2020-01-01T00:00:00->2020-01-02T00:00:00 dayHold=2',
+    //   '2020-01-03T00:00:00->2020-01-04T00:00:00 dayHold=2'
+    // ] btDays: 5
+    let rSpan = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { ...strategy.settings, intervalSec: 86400, timeBasis: 'span' } }, funGetSeriesDay)
+    console.log('runStrategy(span):', rSpan.orders.map((o) => `${o.timeStart}->${o.timeEnd} dayHold=${o.dayHold}`), 'btDays:', rSpan.summary.btDays)
+    // => runStrategy(span): [
+    //   '2020-01-01T00:00:00->2020-01-02T00:00:00 dayHold=1',
+    //   '2020-01-03T00:00:00->2020-01-04T00:00:00 dayHold=1'
+    // ] btDays: 6
+
     //genReportCore, 產出html報告(內含權益曲線, 訂單表格, 時間軸與摘要)
     WTradeBacktest.genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './test/tmp-g/report.html')
     console.log('genReportCore: ./test/tmp-g/report.html')

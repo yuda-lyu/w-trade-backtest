@@ -181,6 +181,30 @@ async function test() {
     })
     // => runStrategy(unit) summary: { uTradeAllMax: 22.042, uEquityFinal: 10000.394698 }
 
+    //settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss為正數, rFee為非負數)收數字或數字字串(去頭尾空白後轉換, 同unit之慣例), 通過即轉為Number後使用, 結果與給數字者逐位相同; 給了而無效時reject(訊息如`invalid settings.uIni: must be a positive number`, 不含輸入值), 且先於任何進場
+    let rStr = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { uIni: '1000', uTrade: ' 100 ', rTakeProfit: '0.05', rStopLoss: '0.03', rFee: '0.0005' } }, funGetSeries)
+    console.log('runStrategy(string settings):', rStr.summary.uIni, rStr.summary.uEquityFinal, JSON.stringify(rStr.orders) === JSON.stringify(r.orders))
+    // => runStrategy(string settings): 1000 1001.8 true
+
+    //settings.intervalSec與settings.timeBasis, 每根K線之秒數與時間口徑(K線之time為開盤時刻)
+    //  intervalSec須為60之倍數之正整數且不大於31536000(數字或整數字串), 無效時throw(訊息如`invalid settings.intervalSec: must be a positive integer multiple of 60 up to 31536000`, 不含輸入值); 只給intervalSec不改變任何績效數字
+    //  timeBasis為'span'(須同時給intervalSec)才依實際時點計: dayHold為進場棒收盤至出場棒收盤之經過日數(無條件進位, 至少1日), btDays計至末根收盤(末根開盤+intervalSec)
+    let arrOhlcDay = arrOhlc.map((v, i) => ({ ...v, time: `2020-01-0${i + 1}T00:00:00` })) //同上之價格改為6根日線
+    let arrSigDay = arrSig.map((v, i) => ({ ...v, time: arrOhlcDay[i].time }))
+    let funGetSeriesDay = async (key) => (key === 'btc' ? arrOhlcDay : arrSigDay)
+    let rOpen = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { ...strategy.settings, intervalSec: 86400 } }, funGetSeriesDay)
+    console.log('runStrategy(intervalSec):', rOpen.orders.map((o) => `${o.timeStart}->${o.timeEnd} dayHold=${o.dayHold}`), 'btDays:', rOpen.summary.btDays)
+    // => runStrategy(intervalSec): [
+    //   '2020-01-01T00:00:00->2020-01-02T00:00:00 dayHold=2',
+    //   '2020-01-03T00:00:00->2020-01-04T00:00:00 dayHold=2'
+    // ] btDays: 5
+    let rSpan = await WTradeBacktest.runStrategy(ott, { ...strategy, settings: { ...strategy.settings, intervalSec: 86400, timeBasis: 'span' } }, funGetSeriesDay)
+    console.log('runStrategy(span):', rSpan.orders.map((o) => `${o.timeStart}->${o.timeEnd} dayHold=${o.dayHold}`), 'btDays:', rSpan.summary.btDays)
+    // => runStrategy(span): [
+    //   '2020-01-01T00:00:00->2020-01-02T00:00:00 dayHold=1',
+    //   '2020-01-03T00:00:00->2020-01-04T00:00:00 dayHold=1'
+    // ] btDays: 6
+
     //genReportCore, 產出html報告(內含權益曲線, 訂單表格, 時間軸與摘要)
     WTradeBacktest.genReportCore({ name: '示範策略', orders: rr.orders, summary: rr.summary }, './test/tmp-g/report.html')
     console.log('genReportCore: ./test/tmp-g/report.html')
@@ -192,3 +216,10 @@ test()
         console.log('catch', err)
     })
 ```
+
+#### 每根時長與時間口徑(intervalSec、timeBasis):
+K線之`time`為開盤時刻. `settings.intervalSec`(runStrategy、runStrategies之各策略與快速評估)或`opt.intervalSec`(calcOrdersRatio、calcOrdersSummary、calcOrdersSummarySimple、calcSummary、closeAndSummaryOrders、genReport)為每根K線之秒數: 60之倍數之正整數且不大於31536000(365日), 數字或整數字串(同unit之慣例), 如1hr為3600、4hr為14400、1day為86400; 只給它不改變任何績效數字(任何週期皆然), 只使closeAndSummaryOrders之區間檢查改依每根時長. `timeBasis: 'span'`(須同時給intervalSec)才依實際時點計算: 持倉天數dayHold為進場棒收盤至出場棒收盤之經過時長(日, 無條件進位, 至少1日; 日線無缺根時持k根即k日, 有缺根時為經過之日數), 回測天數btDays計至末根收盤(timeOhlcEnd加intervalSec, 故timeOhlcEnd須為末根K線之開盤時刻; 不足1日之窗為0), rProfitOrLossDay、rSharpe(年化因子仍為sqrt(252))、btYears、年化與等效年化隨之改變(年化與等效年化之相對變化約為-intervalSec÷86400÷btDays, 窗越短越大, 例如7根日線之窗約-14%); 未給或`'open'`時同現行(以開盤時刻標籤計: dayHold為日期差+1, btDays為首末根開盤時刻之日差). 不檢查intervalSec與K線之實際間距(不符時'span'之btDays與closeAndSummaryOrders之區間檢查失真). runStrategies各策略之intervalSec與timeBasis須相同. 給了而無效即throw(訊息如`invalid settings.intervalSec: must be a positive integer multiple of 60 up to 31536000`、`invalid settings.timeBasis: must be one of 'open', 'span'`, 不含輸入值), 且先於任何進場與寫檔(runStrategiesAndBacktest先讀取數據再檢測, 但不寫檔). 摘要不回寫此二選項.
+範例見上例之「settings.intervalSec與settings.timeBasis」段(日線6根, 只給intervalSec時次根出場之dayHold為2、btDays為5; timeBasis為'span'時dayHold為1、btDays為6).
+
+#### settings之數值欄(數字字串):
+`settings.uIni`、`uTrade`、`rTakeProfit`、`rStopLoss`(正數)與`rFee`(非負數)收數字或數字字串(去頭尾空白後轉換, 同unit之慣例; 設定檔、網頁與交易所API常以字串提供), 通過即轉為Number後使用, 給數字字串與給數字之訂單與摘要逐位相同(先前以原字串運算, 摘要靜默失真). 適用runStrategy、runStrategies之各策略、快速評估(settings之uIni、uTrade、rFee; 另含input.tp、input.sl與opt.tpsls之{tp,sl}, 為正數)與runStrategiesAndBacktest(經runStrategies), 各入口判準相同. 給了(非undefined與null)而無效即throw或reject, 不改用預設(訊息如`invalid settings.uIni: must be a positive number`、`invalid strategies[1].settings.rFee: must be a non-negative number`、`invalid tp: must be a positive number`, 不含輸入值), 且先於任何進場(runStrategiesAndBacktest先讀取數據再檢測, 但不寫檔); settings給unit時不使用uTrade, 不檢. 未給(undefined或null)者: 快速評估取預設(uIni 1000、uTrade 1、rFee 0.0005), runStrategy與runStrategies維持原行為. 另`src/buildBaseUnitNotional.mjs`(內部用, 他套件可經深層路徑取用)回傳之`unit`為轉型後之選項物件.

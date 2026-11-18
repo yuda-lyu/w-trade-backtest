@@ -23,23 +23,27 @@ let mulberry32 = (seed) => {
 }
 
 //buildTimes, 自2020-01-01T00:00:00起每4小時一根
-let buildTimes = (nBars) => {
-    let base = ott('2020-01-01T00:00:00')
+//  opt.stepSec: 每根秒數(給時改為每stepSec秒一根), opt.timeStart: 首根時刻(預設'2020-01-01T00:00:00'); 皆未給時同原式
+let buildTimes = (nBars, opt = {}) => {
+    let { stepSec = null, timeStart = '2020-01-01T00:00:00' } = opt
+    let base = ott(timeStart)
     let times = []
     for (let i = 0; i < nBars; i++) {
-        times.push(base.add(i * 4, 'hour').format('YYYY-MM-DDTHH:mm:ss'))
+        let t = stepSec === null ? base.add(i * 4, 'hour') : base.add(i * stepSec, 'second')
+        times.push(t.format('YYYY-MM-DDTHH:mm:ss'))
     }
     return times
 }
 
 //genRandomCase, 隨機產生一組(K線, 因子序列含缺值, conds含or分組, tp/sl非對稱, mode)
 //  opt.c0: K線起始價(預設100), 只改價格尺度, 不改亂數之取用次序
+//  opt.stepSec、opt.timeStart: 每根秒數與首根時刻(見buildTimes), 只改時間標籤, 不改亂數之取用次序
 let genRandomCase = (rng, opt = {}) => {
-    let { c0 = 100 } = opt
+    let { c0 = 100, stepSec = null, timeStart = '2020-01-01T00:00:00' } = opt
 
     //arrOhlc, 隨機walk且價格恆正
     let nBars = 30 + Math.floor(rng() * 31)
-    let times = buildTimes(nBars)
+    let times = buildTimes(nBars, { stepSec, timeStart })
     let arrOhlc = []
     let c = c0
     for (let i = 0; i < nBars; i++) {

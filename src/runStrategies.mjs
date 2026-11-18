@@ -10,6 +10,8 @@ import pmSeries from 'wsemi/src/pmSeries.mjs'
 import runStrategy from './runStrategy.mjs'
 import calcSummary from './calcSummary.mjs'
 import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
+import { parseBarTime } from './barTime.mjs'
+import parseSettingsNum from './parseSettings.mjs'
 
 
 /**
@@ -19,7 +21,9 @@ import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
  * 以各策略settings.uIni總和為初始資金呼叫calcSummary統計合併摘要
  * 個別策略執行失敗(如時間點無參數無法下單)時強制略過
  * 各策略settings給unit({rule,buffer,units}，見calcBaseUnitQuantity與runStrategy)時各單名義依基礎單位；unit給了而無效時先於任何策略之執行即reject(不被上述個別策略之略過吞掉，以免無效之下單單位使該策略被靜默略過)，訊息為`invalid strategies[索引].settings.unit…`；未給(undefined或null)時行為不變
- * 合併摘要之本金為各策略settings.uIni之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較
+ * 各策略settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss、rFee，判準見runStrategy)收數字或數字字串並轉為Number，與runStrategy同一檢測函數；給了而無效時先於任何策略之執行即reject(訊息為`invalid strategies[索引].settings.uIni: must be a positive number`等)，不被上述個別策略之略過吞掉；uIni為數字字串者以轉換值計入本金(不再因非數字而被靜默略過)；未給(undefined或null)者行為不變
+ * 合併摘要之本金為各策略settings.uIni(轉換值)之總和(不因unit改變)，最大持倉名義(uTradeAllMax)是否超過本金不檢，由呼叫端以summary自行比較
+ * 各策略settings可給intervalSec(每根K線之秒數)與timeBasis(時間口徑，見runStrategy)，合併摘要依之計算；各策略之intervalSec與timeBasis須相同(未給者視為null與'open')，給了而無效或各策略不同時先於任何策略之執行即reject，訊息為`invalid strategies[索引].settings.intervalSec…`或`invalid strategies[索引].settings.timeBasis…`(不同者為`… must be the same for all strategies`)；皆未給時行為不變
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -89,11 +93,28 @@ let runStrategies = async (ott, strategies, funGetSeries, opt = {}) => {
     let withSummary = get(opt, 'withSummary', true)
 
     //check settings.unit, 給了而無效於此throw(先於任何策略之執行); 下列逐策略之try/catch會略過失敗之策略, 若不先檢測則無效之unit使該策略被靜默略過
+    //check settings.intervalSec, settings.timeBasis, 同上須先檢測, 且各策略須相同(合併摘要只能有一種口徑), bt0為合併摘要所用者
+    //check settings之數值欄(uIni, uTrade, rTakeProfit, rStopLoss, rFee), 同上須先檢測(與runStrategy同一檢測函數, 各入口一致), kpUIni儲存各策略uIni之轉換值(數字字串轉為Number), 下列累加本金只用轉換值
+    let bt0 = null
+    let kpUIni = {}
     each(strategies, (strategy, k) => {
-        let unit = get(strategy, 'settings.unit', null)
+        let st = get(strategy, 'settings', null)
+        let name = `strategies[${k}].settings`
+        let unit = get(st, 'unit', null)
         if (unit !== null) {
-            buildBaseUnitNotional(unit, `strategies[${k}].settings.unit`)
+            buildBaseUnitNotional(unit, `${name}.unit`)
         }
+        let bt = parseBarTime(st, name)
+        if (bt0 === null) {
+            bt0 = bt
+        }
+        else if (bt.intervalSec !== bt0.intervalSec) {
+            throw new Error(`invalid ${name}.intervalSec: must be the same for all strategies`)
+        }
+        else if (bt.timeBasis !== bt0.timeBasis) {
+            throw new Error(`invalid ${name}.timeBasis: must be the same for all strategies`)
+        }
+        kpUIni[k] = parseSettingsNum(st, name, { skipUTrade: unit !== null }).uIni
     })
 
     //uIniAll, ordersAll
@@ -109,7 +130,7 @@ let runStrategies = async (ott, strategies, funGetSeries, opt = {}) => {
             r = await runStrategy(ott, strategy, funGetSeries, { withCalcOrderProfitOrLoss, withSummary: false })
 
             //uIni
-            let uIni = get(strategy, 'settings.uIni', '')
+            let uIni = get(kpUIni, k, '')
             if (!isNumber(uIni)) {
                 throw new Error(`uIni[${uIni}] is not a number`)
             }
@@ -168,7 +189,7 @@ let runStrategies = async (ott, strategies, funGetSeries, opt = {}) => {
 
     //withSummary
     if (withSummary) {
-        summary = await calcSummary(ott, uIniAll, ordersAll, timeOhlcStart, timeOhlcEnd)
+        summary = await calcSummary(ott, uIniAll, ordersAll, timeOhlcStart, timeOhlcEnd, bt0 !== null ? bt0 : {})
     }
 
     //rr

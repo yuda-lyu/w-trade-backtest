@@ -9,6 +9,7 @@ import dig from 'wsemi/src/dig.mjs'
 import haskey from 'wsemi/src/haskey.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import ispnum from 'wsemi/src/ispnum.mjs'
+import { parseBarTime, calcBtDays } from './barTime.mjs'
 
 
 /**
@@ -16,7 +17,9 @@ import ispnum from 'wsemi/src/ispnum.mjs'
  *
  * 統計交易次數、勝率、最大回撤、最大持倉、夏普值、最終權益與各盈虧比例等欄位
  * 訂單需先經calcOrders結算(含uEquity)與calcOrdersRatio計算(含dayHold與rProfitOrLossDay，夏普值計算所需)
- * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw
+ * btDays為timeOhlcStart至timeOhlcEnd(首根與末根K線之開盤時刻)之日差(截斷為整數)，btYears為btDays/365，年化與等效年化以btYears換算；夏普值為dayHold加權之日盈虧比例平均除以加權標準差再乘sqrt(252)
+ * opt.timeBasis為'span'(須同時給opt.intervalSec)時btDays計至末根收盤(timeOhlcEnd加opt.intervalSec秒)，btYears、年化、等效年化隨之改變；未給或'open'時不變，只給opt.intervalSec亦不變；夏普值之年化因子不隨之改變；'span'時timeOhlcEnd須為末根K線之開盤時刻(傳入窗之結束時刻會多算一根)；不檢查opt.intervalSec與K線之實際間距(不符時btDays失真)
+ * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時throw；opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時throw
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -25,6 +28,9 @@ import ispnum from 'wsemi/src/ispnum.mjs'
  * @param {Array} ordersAll 輸入已結算訂單陣列
  * @param {String} timeOhlcStart 輸入回測起始秒時間字串
  * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Number|String} [opt.intervalSec=null] 輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)
+ * @param {String} [opt.timeBasis='open'] 輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'
  * @returns {Object} 回傳回測摘要物件
  * @example
  *
@@ -73,7 +79,7 @@ import ispnum from 'wsemi/src/ispnum.mjs'
  * // }
  *
  */
-let calcOrdersSummary = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
+let calcOrdersSummary = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd, opt = {}) => {
 
     if (!ispnum(uIni)) {
         throw new Error(`uIni[${uIni}] is not a positive number`)
@@ -84,6 +90,9 @@ let calcOrdersSummary = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
     if (!isestr(timeOhlcEnd)) {
         throw new Error(`invalid timeOhlcEnd[${timeOhlcEnd}]`)
     }
+
+    //bt, 每根時長與時間口徑, 給了而無效於此throw
+    let bt = parseBarTime(opt, 'opt')
 
     //sortBy, 已或未平倉訂單一定有timeStart欄位
     ordersAll = sortBy(ordersAll, 'timeStart')
@@ -367,11 +376,8 @@ let calcOrdersSummary = (ott, uIni, ordersAll, timeOhlcStart, timeOhlcEnd) => {
     }
     // console.log('rSharpe', rSharpe)
 
-    let tStart = ott(timeOhlcStart)
-    let tEnd = ott(timeOhlcEnd)
-
-    //回測時長日
-    let btDays = tEnd.diff(tStart, 'day')
+    //回測時長日, timeBasis為'span'時計至末根收盤(與calcOrdersSummarySimple共用calcBtDays)
+    let btDays = calcBtDays(ott, timeOhlcStart, timeOhlcEnd, bt)
 
     //回測時長年
     let btYears = btDays / 365

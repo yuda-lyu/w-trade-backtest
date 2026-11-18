@@ -12,6 +12,7 @@ import fsReadJson from 'wsemi/src/fsReadJson.mjs'
 import fsWriteJson from 'wsemi/src/fsWriteJson.mjs'
 import calcSummary from './calcSummary.mjs'
 import genReportCore from './genReportCore.mjs'
+import { parseBarTime } from './barTime.mjs'
 
 
 /**
@@ -19,7 +20,8 @@ import genReportCore from './genReportCore.mjs'
  *
  * 讀取orders.json(已結算訂單陣列)後，經calcSummary統計摘要，再以genReportCore產出html報表
  * 訂單須為已結算形(含uProfitOrLoss、uEquity等欄位)，未結算單(timeEnd為空)仍可計算，計入summary.numTradeUnsettled
- * fpOrders非有效字串或非檔案、內容非有效陣列時throw
+ * opt.intervalSec與opt.timeBasis原樣交給calcSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計；btDays計至timeOhlcEnd加opt.intervalSec，未給opt.timeOhlcEnd時其推得值為最晚出場棒之開盤時刻，未平倉單取其進場棒之開盤時刻)；未給或'open'時不變，只給opt.intervalSec亦不變
+ * fpOrders非有效字串或非檔案、內容非有效陣列時throw；opt.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給opt.intervalSec時throw，且先於讀取orders.json與寫檔
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -32,6 +34,8 @@ import genReportCore from './genReportCore.mjs'
  * @param {String} [opt.timeOhlcStart=''] 輸入摘要統計起始秒時間字串，影響btDays與年化，預設由訂單最早timeStart推得，注意訂單起訖僅為「有單的範圍」，若實際回測窗較寬(頭尾無單)年化會被高估，建議明給
  * @param {String} [opt.timeOhlcEnd=''] 輸入摘要統計結束秒時間字串，預設由訂單最晚timeEnd(未平倉單取timeStart)推得
  * @param {Boolean} [opt.withWriteSummary=false] 輸入是否同時輸出summary.json(與fpOut同資料夾)布林值，預設false
+ * @param {Number|String} [opt.intervalSec=null] 輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)
+ * @param {String} [opt.timeBasis='open'] 輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'
  * @returns {Promise} 回傳Promise，resolve為物件，內含orders(訂單陣列)、summary(摘要物件)、fpOut(輸出html路徑)欄位
  * @example
  *
@@ -75,6 +79,9 @@ let genReport = async (ott, fpOrders, opt = {}) => {
         throw new Error(`fpOrders[${fpOrders}] is not a file`)
     }
 
+    //bt, 每根時長與時間口徑, 給了而無效於此throw(先於讀取orders.json與寫檔)
+    let bt = parseBarTime(opt, 'opt')
+
     //orders, fsReadJson回傳{success}或{error}, 讀取或解析失敗時取不到success
     let orders = get(fsReadJson(fpOrders), 'success', null)
     if (!isearr(orders)) {
@@ -114,7 +121,7 @@ let genReport = async (ott, fpOrders, opt = {}) => {
     let withWriteSummary = get(opt, 'withWriteSummary', false)
 
     //calcSummary
-    let summary = await calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd)
+    let summary = await calcSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, bt)
 
     //fsWriteJson
     if (withWriteSummary) {

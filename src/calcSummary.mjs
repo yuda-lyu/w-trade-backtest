@@ -5,6 +5,7 @@ import isestr from 'wsemi/src/isestr.mjs'
 import ispnum from 'wsemi/src/ispnum.mjs'
 import calcOrdersRatio from './calcOrdersRatio.mjs'
 import calcOrdersSummary from './calcOrdersSummary.mjs'
+import { parseBarTime } from './barTime.mjs'
 
 
 /**
@@ -12,7 +13,8 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  *
  * 依timeStart排序後重算各已平倉單之uEquity、uCumuProfitOrLoss與rCumuProfitOrLoss(多策略各自結算後合併重算用)
  * 再執行calcOrdersRatio與calcOrdersSummary，並附加timeTest、timeOhlcStart、timeOhlcEnd、uIni欄位
- * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject
+ * opt.intervalSec與opt.timeBasis原樣交給calcOrdersRatio與calcOrdersSummary(timeBasis為'span'時dayHold、btDays及其衍生欄位改依每根時長計，timeOhlcEnd須為末根K線之開盤時刻，見兩函數)
+ * uIni非正數或timeOhlcStart、timeOhlcEnd非有效字串時reject；opt.intervalSec非60之倍數之正整數或大於31536000(數字或整數字串)、opt.timeBasis非'open'或'span'、或為'span'而未給opt.intervalSec時reject，且先於改寫任何訂單
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -22,6 +24,8 @@ import calcOrdersSummary from './calcOrdersSummary.mjs'
  * @param {String} timeOhlcStart 輸入回測起始秒時間字串
  * @param {String} timeOhlcEnd 輸入回測結束秒時間字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
+ * @param {Number|String} [opt.intervalSec=null] 輸入每根K線之秒數，60之倍數之正整數且不大於31536000(如4hr為14400、1day為86400)，預設null(未給)
+ * @param {String} [opt.timeBasis='open'] 輸入時間口徑字串，'open'為以K線開盤時刻標籤計，'span'為計入每根K線之時距(須給opt.intervalSec)，預設'open'
  * @returns {Promise} 回傳Promise，resolve為回測摘要物件
  * @example
  *
@@ -85,6 +89,9 @@ let calcSummary = async(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, opt = {})
         throw new Error(`invalid timeOhlcEnd[${timeOhlcEnd}]`)
     }
 
+    //bt, 每根時長與時間口徑, 給了而無效於此throw(先於改寫任何訂單)
+    let bt = parseBarTime(opt, 'opt')
+
     //sortBy, 已或未平倉訂單一定有timeStart欄位
     orders = sortBy(orders, 'timeStart')
 
@@ -108,10 +115,10 @@ let calcSummary = async(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, opt = {})
     })
 
     //計算各單持倉天數, 等效日盈虧比例
-    orders = calcOrdersRatio(ott, orders)
+    orders = calcOrdersRatio(ott, orders, bt)
 
     //評分計算
-    let _summary = calcOrdersSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd)
+    let _summary = calcOrdersSummary(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, bt)
 
     //summary
     let summary = {
