@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcBtDays">calcBtDays</a></li><li><a href="global.html#calcDayHoldSpan">calcDayHoldSpan</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#parseBarTime">parseBarTime</a></li><li><a href="global.html#parseNum">parseNum</a></li><li><a href="global.html#parseSettingsNum">parseSettingsNum</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
     
 </nav>
 
@@ -61,6 +61,8 @@ import calcOrders from './calcOrders.mjs'
 import calcOrdersRatio from './calcOrdersRatio.mjs'
 import calcOrdersSummary from './calcOrdersSummary.mjs'
 import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
+import { parseBarTime } from './barTime.mjs'
+import parseSettingsNum from './parseSettings.mjs'
 
 
 /**
@@ -70,12 +72,14 @@ import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
  * 觸發時以該K棒Close下單，並依settings計算止盈止損價格，再經calcOrders結算與calcOrdersRatio、calcOrdersSummary統計
  * 僅於全部conds序列皆有值之共同時間點判斷觸發
  * settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，其餘算式不變；未給(undefined或null)unit時行為與輸出不變
- * strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時reject，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較
+ * settings給intervalSec(每根K線之秒數)與timeBasis(時間口徑)時交給calcOrdersRatio與calcOrdersSummary：timeBasis為'span'(須同時給intervalSec)時dayHold為進場棒收盤至出場棒收盤之時長(日，無條件進位，至少1日)、btDays計至末根收盤，rProfitOrLossDay、rSharpe、btYears、年化與等效年化隨之改變；未給或'open'時行為與輸出不變，只給intervalSec亦不變；摘要不回寫此二選項；不檢查intervalSec與K線之實際間距(不符時'span'之btDays失真)
+ * settings之數值欄(uIni、uTrade、rTakeProfit、rStopLoss為正數，rFee為非負數)收數字或數字字串(去頭尾空白後轉換，同unit之慣例)，通過即轉為Number且其後只用轉換值(給數字字串與給數字之訂單與摘要逐位相同，不再以原字串運算而使摘要靜默失真)；給了(非undefined與null)而無效即reject、不改用預設(訊息如`invalid settings.uIni: must be a positive number`，不含輸入值)；數值之0(正數欄)、負數、Infinity與NaN亦為無效(先前不檢而靜默產生失真之摘要)；未給(undefined或null)者維持原行為；settings給unit時不使用uTrade，不檢
+ * strategy.mode非'long'或'short'、keyOhlc或conds無效、funGetSeries非函數、settings.unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)、settings之數值欄給了而無效、settings.intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、settings.timeBasis給了而非'open'或'span'、timeBasis為'span'而未給intervalSec時reject，且先於任何進場與讀取數據；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以summary自行比較
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
  * @param {Function} ott 輸入時區時間函數，傳入時間字串回傳dayjs時間物件(可用src/ott.mjs或自行以dayjs包裝)
- * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit)欄位
+ * @param {Object} strategy 輸入策略物件，需含mode('long'或'short')、keyOhlc(K線序列key字串)、conds(條件陣列，各元素為{key,sym,th,opr})、settings({uIni,uTrade,rTakeProfit,rStopLoss,rFee}，可另含unit、intervalSec與timeBasis)欄位
  * @param {Function} funGetSeries 輸入序列查詢async函數，依key回傳時間序列陣列
  * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {Boolean} [opt.withCalcOrderProfitOrLoss=true] 輸入是否經calcOrders結算訂單布林值，預設true
@@ -173,6 +177,12 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
     //bu, 依基礎單位定每單名義(settings.unit), 未給(undefined或null)為null, 給了而無效於此throw(先於任何進場)
     let unit = get(st, 'unit', null)
     let bu = unit !== null ? buildBaseUnitNotional(unit, 'settings.unit') : null
+
+    //bt, 每根時長與時間口徑(settings.intervalSec, settings.timeBasis), 給了而無效於此throw(先於任何進場)
+    let bt = parseBarTime(st, 'settings')
+
+    //ps, settings之數值欄(uIni, uTrade, rTakeProfit, rStopLoss, rFee)之檢測與轉型, 給了而無效於此throw(先於任何進場), 通過即轉為Number且其後只用轉換值(數字字串與數字結果逐位相同); 未給(undefined或null)者維持原值; 給settings.unit時uTrade不使用故不檢
+    let ps = parseSettingsNum(st, 'settings', { skipUTrade: bu !== null })
 
     //withCalcOrderProfitOrLoss
     let withCalcOrderProfitOrLoss = get(opt, 'withCalcOrderProfitOrLoss', true)
@@ -335,7 +345,7 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
         }
 
         //uTrade, 下單金額(USDT), 給settings.unit時為該單依基礎單位之名義
-        let uTrade = st.uTrade
+        let uTrade = ps.uTrade
         if ((bLong || bShort) &amp;&amp; bu !== null) {
             uTrade = bu.getNotional(v.Close)
         }
@@ -347,15 +357,15 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
                 timeStart: time, //下單買入時所屬k棒時間
                 priceStart: v.Close, //單買入時Close價格
                 uTrade, //下單金額(USDT)
-                rTakeProfit: st.rTakeProfit, //下單設定止盈比例
-                priceTakeProfit: (1 + st.rTakeProfit) * v.Close, //下單設定止盈價格(USDT)
-                rStopLoss: st.rStopLoss, //下單設定止損比例
-                priceStopLoss: (1 - st.rStopLoss) * v.Close, //下單設定止損價格(USDT)
+                rTakeProfit: ps.rTakeProfit, //下單設定止盈比例
+                priceTakeProfit: (1 + ps.rTakeProfit) * v.Close, //下單設定止盈價格(USDT)
+                rStopLoss: ps.rStopLoss, //下單設定止損比例
+                priceStopLoss: (1 - ps.rStopLoss) * v.Close, //下單設定止損價格(USDT)
                 timeEnd: '', //賣出時所屬k棒時間, 待最後結算更新
                 priceEnd: '', //賣出時Close價格, 待最後結算更新
                 modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
-                rFee: st.rFee, //手續費比例
-                uFee: st.rFee * uTrade, //交易手續費(USDT)
+                rFee: ps.rFee, //手續費比例
+                uFee: ps.rFee * uTrade, //交易手續費(USDT)
                 uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
                 rProfitOrLoss: '', //盈虧比例, 待最後結算更新
                 uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新
@@ -373,15 +383,15 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
                 timeStart: time, //賣出時所屬k棒時間
                 priceStart: v.Close, //賣出時Close價格
                 uTrade, //下單金額(USDT)
-                rTakeProfit: st.rTakeProfit, //止盈
-                priceTakeProfit: (1 - st.rTakeProfit) * v.Close, //止盈價格(USDT)
-                rStopLoss: st.rStopLoss, //止損
-                priceStopLoss: (1 + st.rStopLoss) * v.Close, //止損價格(USDT)
+                rTakeProfit: ps.rTakeProfit, //止盈
+                priceTakeProfit: (1 - ps.rTakeProfit) * v.Close, //止盈價格(USDT)
+                rStopLoss: ps.rStopLoss, //止損
+                priceStopLoss: (1 + ps.rStopLoss) * v.Close, //止損價格(USDT)
                 timeEnd: '', //買入時所屬k棒時間, 待最後結算更新
                 priceEnd: '', //買入時Close價格, 待最後結算更新
                 modeResult: '', //交易結果, 止盈(takeProfit)或止損(stopLoss), 待最後結算更新
-                rFee: st.rFee, //手續費比例
-                uFee: st.rFee * uTrade, //交易手續費(USDT)
+                rFee: ps.rFee, //手續費比例
+                uFee: ps.rFee * uTrade, //交易手續費(USDT)
                 uProfitOrLoss: '', //盈虧金額(USDT), 含手續費, 待最後結算更新
                 rProfitOrLoss: '', //盈虧比例, 待最後結算更新
                 uCumuProfitOrLoss: '', //累計盈虧金額(USDT), 含手續費, 待最後結算更新
@@ -399,7 +409,7 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
 
     //withCalcOrderProfitOrLoss
     if (withCalcOrderProfitOrLoss) {
-        orders = await calcOrders(arrOhlc, orders, { uIni: st.uIni })
+        orders = await calcOrders(arrOhlc, orders, { uIni: ps.uIni })
         // console.log('orders', orders)
     }
 
@@ -408,17 +418,17 @@ let runStrategy = async(ott, strategy, funGetSeries, opt = {}) => {
         timeTest: ott().format('YYYY-MM-DDTHH:mm:ssZ'),
         timeOhlcStart,
         timeOhlcEnd,
-        uIni: get(st, 'uIni', ''), //額外提取uIni儲存至summary, 其他參數須依照單策略或多策略自行再添加
+        uIni: get(ps, 'uIni', ''), //額外提取uIni儲存至summary, 其他參數須依照單策略或多策略自行再添加
     }
 
     //withSummary
     if (withSummary) {
 
         //計算各單持倉天數, 等效日盈虧比例
-        orders = calcOrdersRatio(ott, orders)
+        orders = calcOrdersRatio(ott, orders, bt)
 
         //評分計算
-        let _summary = calcOrdersSummary(ott, st.uIni, orders, timeOhlcStart, timeOhlcEnd)
+        let _summary = calcOrdersSummary(ott, ps.uIni, orders, timeOhlcStart, timeOhlcEnd, bt)
 
         //merge
         summary = {
@@ -454,7 +464,7 @@ export default runStrategy
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 17:30:39 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 23:30:37 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

@@ -29,7 +29,7 @@
 <nav >
     
     
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#buildBaseUnitNotional">buildBaseUnitNotional</a></li><li><a href="global.html#buildKLinesTpSl">buildKLinesTpSl</a></li><li><a href="global.html#buildStrategyFastSession">buildStrategyFastSession</a></li><li><a href="global.html#calcBaseUnitQuantity">calcBaseUnitQuantity</a></li><li><a href="global.html#calcBtDays">calcBtDays</a></li><li><a href="global.html#calcDayHoldSpan">calcDayHoldSpan</a></li><li><a href="global.html#calcOrders">calcOrders</a></li><li><a href="global.html#calcOrdersRatio">calcOrdersRatio</a></li><li><a href="global.html#calcOrdersSummary">calcOrdersSummary</a></li><li><a href="global.html#calcOrdersSummarySimple">calcOrdersSummarySimple</a></li><li><a href="global.html#calcSummary">calcSummary</a></li><li><a href="global.html#closeAndSummaryOrders">closeAndSummaryOrders</a></li><li><a href="global.html#genKLinesTpSl">genKLinesTpSl</a></li><li><a href="global.html#genReport">genReport</a></li><li><a href="global.html#genReportCore">genReportCore</a></li><li><a href="global.html#loadKLinesTpSl">loadKLinesTpSl</a></li><li><a href="global.html#parseBarTime">parseBarTime</a></li><li><a href="global.html#parseNum">parseNum</a></li><li><a href="global.html#parseSettingsNum">parseSettingsNum</a></li><li><a href="global.html#runStrategies">runStrategies</a></li><li><a href="global.html#runStrategiesAndBacktest">runStrategiesAndBacktest</a></li><li><a href="global.html#runStrategy">runStrategy</a></li><li><a href="global.html#settleOrderPnl">settleOrderPnl</a></li></ul>
     
 </nav>
 
@@ -53,6 +53,13 @@ import genKLinesTpSl from './genKLinesTpSl.mjs'
 import calcOrdersSummarySimple from './calcOrdersSummarySimple.mjs'
 import settleOrderPnl from './settleOrderPnl.mjs'
 import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
+import { parseBarTime } from './barTime.mjs'
+import parseSettingsNum, { parseNum, isGiven } from './parseSettings.mjs'
+
+
+//evaluate之settings數值欄檢測選項(模組層常數, 熱路徑不逐次配置): 只檢uIni、uTrade、rFee(rTakeProfit與rStopLoss以input.tp、input.sl為準); 給settings.unit時uTrade不使用故不檢
+let OPT_PS = { keys: ['uIni', 'uTrade', 'rFee'], skipUTrade: false }
+let OPT_PS_UNIT = { keys: ['uIni', 'uTrade', 'rFee'], skipUTrade: true }
 
 
 /**
@@ -63,6 +70,8 @@ import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
  * 觸發語義與runStrategy等價: 任一cond序列於該棒缺值(NaN)即整棒跳過(等同僅於全部cond序列皆有值之共同時間點判斷)、'and'組須全真且'or'組至少一真、sym為'>'比大於否則比小於
  * 序列param須為有限數值，缺值以該時間點不存在表示; opt.mode非'long'或'short'、arrOhlc或serieses無效時throw; evaluate之conds非有效陣列(含空陣列, 同runStrategy)或cond.key不在serieses時throw
  * evaluate之settings給unit({rule,buffer,units}，見calcBaseUnitQuantity)時，各單之uTrade改為依基礎單位之名義(units×q0(進場價)×進場價，不使用settings.uTrade)、uFee為rFee×該單uTrade，與runStrategy之settings.unit同義；未給(undefined或null)unit時行為與輸出不變；unit給了而無效(不是物件、rule之stepSize與minQty與minNotional非正數、buffer非非負數、units非正整數，數字字串視同數字)時throw，且先於任何進場；最大持倉名義(uTradeAllMax)是否超過settings.uIni不檢，由呼叫端以摘要自行比較
+ * evaluate之settings之數值欄(uIni、uTrade為正數，rFee為非負數)與input之tp、sl(正數)及opt.tpsls之{tp,sl}收數字或數字字串並轉為Number(與runStrategy同一檢測函數，其後只用轉換值，給數字字串與給數字之摘要與訂單逐位相同)；給了(非undefined與null)而無效即throw、不改用預設(訊息如`invalid settings.uIni: must be a positive number`、`invalid tp: must be a positive number`、`invalid opt.tpsls[索引].tp: must be a positive number`，不含輸入值)，且先於任何進場；settings之uIni、uTrade、rFee未給(undefined或null)取預設；未給之tp或sl仍由genKLinesTpSl throw；settings給unit時不使用uTrade，不檢；settings之rTakeProfit與rStopLoss於evaluate不使用(以input.tp與input.sl為準)，不檢
+ * evaluate之settings給intervalSec(每根K線之秒數)與timeBasis(時間口徑)時原樣交給calcOrdersSummarySimple，與runStrategy之settings同義：timeBasis為'span'(須同時給intervalSec)時btDays計至末根收盤，btYears與等效年化隨之改變；未給或'open'時行為與輸出不變，只給intervalSec亦不變；不檢查intervalSec與K線之實際間距(不符時'span'之btDays失真)；intervalSec給了而非60之倍數之正整數或大於31536000(數字或整數字串)、timeBasis給了而非'open'或'span'、timeBasis為'span'而未給intervalSec時throw，且先於任何進場
  *
  * Unit Test: {@link https://github.com/yuda-lyu/w-trade-backtest/blob/master/test/unit-WTradeBacktest.test.mjs Github}
  * @function
@@ -72,7 +81,7 @@ import buildBaseUnitNotional from './buildBaseUnitNotional.mjs'
  * @param {String} opt.mode 輸入交易方向字串，'long'或'short'
  * @param {Object} opt.serieses 輸入因子序列物件，key為因子名稱，value為{time,param}陣列，param須為有限數值
  * @param {Array} [opt.tpsls=[]] 輸入預建first-touch表之{tp,sl}陣列，未列組合於evaluate時惰性建置，預設[]
- * @returns {Object} 回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)與unit(依基礎單位定每單名義，預設不使用)，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)
+ * @returns {Object} 回傳session物件，內含evaluate({conds,tp,sl,settings},opt)評估函數，conds各元素為{key,sym,th,opr}(與runStrategy同構)，settings可給uIni(預設1000)、uTrade(預設1)、rFee(預設0.0005)、unit(依基礎單位定每單名義，預設不使用)、intervalSec(每根K線之秒數，預設不給)與timeBasis(時間口徑'open'或'span'，預設'open')，evaluate預設回傳calcOrdersSummarySimple同構摘要物件，evaluate之opt.withOrders為true時回傳{orders,summary}(orders與loadKLinesTpSl之ordersFromBars同構，供除錯對照之慢速路徑)
  * @example
  *
  * let arrOhlc = [
@@ -176,8 +185,8 @@ let buildStrategyFastSession = (ott, opt = {}) => {
     //預建
     let tpsls = get(opt, 'tpsls', [])
     if (isearr(tpsls)) {
-        for (let v of tpsls) {
-            getFirstTouch(v.tp, v.sl)
+        for (let [i, v] of tpsls.entries()) {
+            getFirstTouch(parseNum(v.tp, 'p', `opt.tpsls[${i}].tp`), parseNum(v.sl, 'p', `opt.tpsls[${i}].sl`)) //數字字串轉為Number後才建表與作快取鍵(否則'0.05'與0.05同鍵而表依字串建置)
         }
     }
 
@@ -196,10 +205,6 @@ let buildStrategyFastSession = (ott, opt = {}) => {
 
         //settings
         let st = get(input, 'settings', {})
-        let uIni = get(st, 'uIni', 1000)
-        let uTrade = get(st, 'uTrade', 1)
-        let rFee = get(st, 'rFee', 0.0005)
-        let uFee = rFee * uTrade
 
         //bu, 依基礎單位定每單名義(settings.unit), 未給(undefined或null)為null, 給了而無效於此throw(先於任何進場); 同key跨次重用其價格快取
         let unit = get(st, 'unit', null)
@@ -213,6 +218,20 @@ let buildStrategyFastSession = (ott, opt = {}) => {
                 kpBu.set(bu.key, bu)
             }
         }
+
+        //bt, 每根時長與時間口徑(settings.intervalSec, settings.timeBasis), 給了而無效於此throw(先於任何進場)
+        let bt = parseBarTime(st, 'settings')
+
+        //ps, settings之數值欄(uIni, uTrade, rFee)之檢測與轉型, 給了而無效於此throw(先於任何進場), 通過即轉為Number且其後只用轉換值(與runStrategy同一檢測函數); 未給(undefined或null)取預設(uIni 1000, uTrade 1, rFee 0.0005); 給settings.unit時uTrade不使用故不檢
+        let ps = parseSettingsNum(st, 'settings', bu !== null ? OPT_PS_UNIT : OPT_PS)
+        let uIni = isGiven(ps.uIni) ? ps.uIni : 1000
+        let uTrade = isGiven(ps.uTrade) ? ps.uTrade : 1
+        let rFee = isGiven(ps.rFee) ? ps.rFee : 0.0005
+        let uFee = rFee * uTrade
+
+        //tp, sl之檢測與轉型(同settings.rTakeProfit與settings.rStopLoss之判準: 給了須為正數, 數字字串轉為Number); 未給(undefined或null)原樣交給genKLinesTpSl throw
+        tp = parseNum(tp, 'p', 'tp')
+        sl = parseNum(sl, 'p', 'sl')
 
         //withOrders
         let withOrders = get(optEv, 'withOrders', false)
@@ -347,7 +366,7 @@ let buildStrategyFastSession = (ott, opt = {}) => {
         }
 
         //summary, 直接調用官方calcOrdersSummarySimple(orders已依timeStart升序故skipSort)
-        let summary = calcOrdersSummarySimple(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, { skipSort: true })
+        let summary = calcOrdersSummarySimple(ott, uIni, orders, timeOhlcStart, timeOhlcEnd, { skipSort: true, intervalSec: bt.intervalSec, timeBasis: bt.timeBasis })
 
         //withOrders時回傳訂單陣列供除錯對照
         if (withOrders) {
@@ -378,7 +397,7 @@ export default buildStrategyFastSession
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 17:30:39 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Wed Nov 18 2026 23:30:37 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
